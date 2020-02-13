@@ -25,7 +25,8 @@ module octreetype
     ! 0 = no data 
     integer :: data
 
-    ! if leaf node 
+    ! if leaf node
+    ! 0 false, 1 true 
     logical :: isleaf
 
     end type
