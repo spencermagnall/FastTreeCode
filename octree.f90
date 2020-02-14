@@ -16,21 +16,50 @@ module octree
    integer, intent(in) :: np
    type(octreenode), allocatable, intent(out) :: nodes(:)
    real, intent(in) :: x(:,:), v(:,:), a(:,:)
-   integer :: i
+   integer :: i, root,j
    integer :: currentnode
+   integer :: endnode
 
    ! allocate nodes for tree
    allocate(nodes(maxnodes))
 
+   ! Data and children for each node = 0 
+   ! i.e dosen't exist 
+   do i=1, maxnodes
+    nodes(i) % children(:) = 0
+    nodes(i) % data = 0 
+  enddo
+
+   ! setup the root node
+   nodes(1) % parent = 0
+   nodes(1) % origin = (/0.0, 0.0, 0.0/)
+   nodes(1) % size = 100
+   nodes(1) % isLeaf = .TRUE.
+   nodes(1) % data = 0 
+   root = 1
+
+   ! endnode is now root
+   endnode = 1
+
    ! iterate through all particles 
    do i =1, np
+   	write(*,*) i
     ! if tree is full expand it 
-    if (totalnodes + 10 >= maxnodes) then
+    if (endnode + 10 >= maxnodes) then
        call resize_nodes(nodes)
+        do j=1, maxnodes
+            ! this is wrong and breaking code
+            ! go from oldsize to maxnodes
+            nodes(j) % children(:) = 0
+            nodes(j) % data = 0 
+        enddo
     endif
 
+    write(*,*) "Resize finished"
+
     ! insert particle in tree
-    call insert_particle(nodes,x,v,a,currentnode,i)
+    call insert_particle(nodes,x,v,a,root,i,endnode)
+    write(*,*) " Insert finished"
 
    enddo     
 
@@ -56,64 +85,95 @@ module octree
 
   end subroutine resize_nodes
 
-  RECURSIVE subroutine insert_particle(nodes,x,v,a,currentnode,currentparticle)
+  RECURSIVE subroutine insert_particle(nodes,x,v,a,currentnode,currentparticle,endnode)
+   ! ENDNODE AND CURRENT NODE ARE NOT THE SAME THING 
    type(octreenode), allocatable, intent(inout) :: nodes(:)
    real, intent(in) :: x(:,:), v(:,:), a(:,:)
+   integer, intent(in) ::  currentparticle
    ! currentnode is the node which we are trying to insert
    ! endnode is the current latest node 
-   integer :: currentnode, currentparticle, endnode
+   integer, intent(out) :: currentnode, endnode
    integer :: olddata
    integer :: i, octant
    ! index of the child node 
    integer :: child
    real :: origin(3), size 
 
-   octant = 0 
+    write(*,*) "CurrentNode is: ", currentnode
+    write(*,*) "endnode is: ", endnode
+    write(*,*) "Currentparticle is: ", currentparticle
 
    ! if we have a leaf node 
    ! and it is empty
    if (nodes(currentnode)%isLeaf .EQV. .TRUE. ) then
+   	!write(*,*) "First if"
    !	thedata = nodes(currentnode) % data
    	!if (thedata == 0) then
+    write(*,*) nodes(currentnode) % data
    if (nodes(currentnode)%data == 0) then
+   	write(*,*) "Leaf node Met"
     ! set data as particle data
      nodes(currentnode)%data = currentparticle
    ! node is a leaf but has a particle 
+    
    	else
+   		write(*,*) "Splitting part 1 "
       ! save old data so it can be reinserted later
       olddata =  nodes(currentnode) % data
       nodes(currentnode)% data = 0
       ! no longer a leaf node 
       nodes(currentnode)% isLeaf = .FALSE.
 
-      ! gen new octants 
-      origin = nodes(currentnode) % origin
-      size = nodes(currentnode) % size
+      
       do i = 1, 8
+        ! gen new octants 
+        origin = nodes(currentnode) % origin
+        size = nodes(currentnode) % size
+
       	! find new origin and size for octants
       	call gen_octant(origin,size,i)
       	! store this new information
-      	nodes(currentnode+i) % origin = origin
-      	nodes(currentnode+i) % size =  size
+      	nodes(endnode+i) % origin = origin
+      	nodes(endnode+i) % size =  size
+        write(*,*) size
+      	nodes(endnode+i) % isLeaf = .TRUE.
+        nodes(endnode+i) % data = 0
       	! let the parent node know its children
-      	nodes(currentnode) % children(i) = currentnode + i
+      	nodes(currentnode) % children(i) = endnode + i
+      	!print*, nodes(currentnode) % children(i)
       enddo
+      endnode = endnode + 8 
+
+      write(*, *) "Octants created"
 
       ! work out what octant the current olddata and new data 
       ! should be in
-
+      !
+      do i=1,8
+        !write(*,*) nodes(currentnode) % children(i)
+      enddo
       ! old data 
       origin = nodes(currentnode) % origin
       call get_containingbox(x,olddata,octant,origin)
+      write(*,*) x(:,olddata)
+      write(*,*) octant
+
       ! index of the child node that is being inserted
       child =  nodes(currentnode) % children(octant)
-      call insert_particle(nodes,x,v,a,child,olddata)
+      write(*,*) child 
+
+      call insert_particle(nodes,x,v,a,child,olddata,endnode)
+      
+      write(*,*) "Old particle finished"
 
       ! new data
       call get_containingbox(x,currentparticle,octant,origin)
+      write(*,*) "Octant is: ", octant
       ! index of the child node that is being inserted
       child = nodes(currentnode) % children(octant)
-      call insert_particle(nodes,x,v,a,child,currentparticle)
+      call insert_particle(nodes,x,v,a,child,currentparticle,endnode)
+
+      write(*,*) "Insertion finished"
 
 
       
@@ -123,7 +183,7 @@ module octree
     	! insert recursively until we reach leaf
     	call get_containingbox(x,currentparticle,octant,origin)
     	child = nodes(currentnode) % children(octant)
-    	call insert_particle(nodes,x,v,a,child,currentparticle) 
+    	call insert_particle(nodes,x,v,a,child,currentparticle,endnode) 
     end if    
 
   end subroutine insert_particle
@@ -132,6 +192,8 @@ module octree
   	real, intent(in) :: x(:,:), origin(3)
   	integer, intent(in) :: currentparticle
   	integer, intent(out) :: octant
+
+    octant = 1
 
   	! if z is smaller than origin
   	! split into two quadtrees based on z value 
@@ -198,6 +260,27 @@ module octree
    end if
     
  end subroutine gen_octant
+
+ recursive subroutine print_tree(nodes, x,depth,currentnode)
+  type(octreenode), allocatable, intent(in) :: nodes(:)
+  real, intent(in) :: x(:,:)
+  integer, intent(in) :: depth, currentnode
+  integer :: i, newdepth
+
+  write(*,*) "Depth: ", depth
+
+  if (nodes(currentnode)% data .NE. 0 ) then 
+    write(*,*) x(:,nodes(currentnode) % data)
+  endif 
+
+  do i=1, 8
+    if (nodes(currentnode) % children(i) .NE. 0) then
+      newdepth = depth + 1
+      call print_tree(nodes,x,newdepth,nodes(currentnode) % children(i))
+    endif
+  enddo 
+
+end subroutine print_tree
 
 end module octree
   

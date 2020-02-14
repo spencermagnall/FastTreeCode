@@ -30,4 +30,9 @@ module octreetype
     logical :: isleaf
 
     end type
+    contains
+    subroutine new_node(this)
+     type(octreenode), intent(out) :: this
+     this % isleaf = .TRUE.
+    end subroutine new_node
 end module octreetype
