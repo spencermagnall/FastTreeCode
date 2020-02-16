@@ -29,7 +29,9 @@ module sphere_dist
     c = 0.0
    endif
 
-   i = 0 
+   i = 0
+
+   open(unit=67, file="dist", status='replace') 
    do while (i < np)
    	
    	write(*,*) i
@@ -54,6 +56,8 @@ module sphere_dist
      r(1,i) = x
      r(2,i) = y
      r(3,i) = z
+     write(67,*) r(:,i)
+
      
     endif 
    enddo
