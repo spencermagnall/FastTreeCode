@@ -31,8 +31,20 @@ module octreetype
 
     end type
     contains
-    subroutine new_node(this)
+    subroutine new_node(this,size,origin)
      type(octreenode), intent(out) :: this
+     real, intent(in) :: size, origin(3)
      this % isleaf = .TRUE.
+     this % children(:) = 0
+     this % size = size
+     this % origin = origin
     end subroutine new_node
+
+    subroutine null_node(this)
+    type(octreenode), intent(out) :: this
+    ! subroutine for uninitialized node
+    this % isleaf = .FALSE. 
+    this % children(:) = 0
+    this % data = 0
+    end subroutine null_node
 end module octreetype

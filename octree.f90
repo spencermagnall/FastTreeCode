@@ -74,20 +74,21 @@ module octree
 
   end subroutine maketree
 
-  subroutine sort_by_octant(x, np, origin, size, x1,x2,x3,x4,x5,x6,x7,x8)
+  subroutine sort_by_octant(x, np, origin, size, x1, x2, x3, x4, x5, x6, x7, x8)
     ! work out what octant each particle is in
     ! so we can paralize  
     real, intent(in) :: x(:,:)
     real, intent(in) :: origin(3)
     real, intent(in) :: size
     integer, intent(in) :: np
-    real, intent(out) :: x1(3,np),x2(3,np),x3(3,np),x4(3,np),x5(3,np),x6(3,np),x7(3,np),x8(3,np)
+    real, allocatable, intent(out) :: x1(:,:), x2(:,:),x3(:,:),x4(:,:),x5(:,:),x6(:,:),x7(:,:),x8(:,:)
     integer :: octant, i, length
     integer :: dim
 
     dim = 3
     length = 1
 
+    allocate(x1(dim,np),x2(dim,np),x3(dim,np),x4(dim,np),x5(dim,np),x6(dim,np),x7(dim,np),x8(dim,np))
     ! init all particles to 0 = null
     x1 = 0 
     x2 = 0 
