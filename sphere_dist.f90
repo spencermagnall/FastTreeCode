@@ -3,7 +3,7 @@ module sphere_dist
 
  contains
 
-  subroutine setup_particles(r,np,radius,center)
+  subroutine setup_particles(r,np,radius,center,start,end)
    ! Subroutine follows steps of the following algorithim:
 
    ! 10 Define an implict surface 
@@ -12,7 +12,7 @@ module sphere_dist
    ! 40 GOTO 10
 
    real, intent(out) :: r(:,:)
-   integer, intent(in) :: np
+   integer, intent(in) :: np,start,end
    ! Radius of sphere
    real, intent(in) :: radius
    ! Center of the Sphere
@@ -29,10 +29,12 @@ module sphere_dist
     c = 0.0
    endif
 
-   i = 0
+   i = start - 1 
 
-   open(unit=67, file="dist", status='replace') 
-   do while (i < np)
+   write(*,*) i
+
+   open(unit=67, file="dist", position='append') 
+   do while (i < end)
    	
    	write(*,*) i
    	x = RAND()
@@ -62,6 +64,7 @@ module sphere_dist
     endif 
    enddo
    print*, "Setup: ", i ," particles" 
+   close(67)
   end subroutine setup_particles
 
   subroutine negative_rand(input)

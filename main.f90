@@ -1,11 +1,12 @@
 program nbody
       use octree
-      use sphere_dist
+      use setup_binary
       use step_leapfrog
       use output
+      use potendirect
       implicit none 
       type(octreenode), allocatable :: nodes(:)
-      integer, parameter :: nopart = 2
+      integer, parameter :: nopart = 400
       real :: x(3, nopart)
       real :: v(3, nopart)
       real :: a(3, nopart)
@@ -32,11 +33,15 @@ program nbody
       t = 0
       dt = 0.1
       iter = 0 
-      tmax = 100
-      
+      tmax = 1000*2*3.14159
+      output_freq = 100 
       ! PUT PARTICLE SETUP HERE
-
+      call init(x,v,m,nopart)
       
+      call get_accel(x,a,m,nopart)
+      !STOP
+      call write_output(x,v,m,nopart,t)
+     ! STOP
       do while(t < tmax)
             iter  = iter + 1
 

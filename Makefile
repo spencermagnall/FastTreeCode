@@ -2,7 +2,8 @@ FC=gfortran
 FFLags= -g -fbounds-check -Wall
 POTEN = potendirect.f90
 STEP = step_leapfrog.f90
-SRC= octreenode.f90 octree.f90  ${POTEN} ${STEP} output.f90 sphere_dist.f90  main.f90 
+SETUP = setup_binary.f90
+SRC= octreenode.f90 octree.f90  ${POTEN} ${STEP} output.f90 sphere_dist.f90 ${SETUP}  main.f90 
 OBJ=${SRC:.f90=.o}
 
 %.o: %.f90

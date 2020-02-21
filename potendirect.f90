@@ -8,7 +8,10 @@ module potendirect
  	real, intent(in) :: m(np)
  	real :: massratio
  	integer :: i, j
- 	real :: dx(3), r, r2 
+ 	real :: dx(3), r, r2
+ 	real :: h 
+
+ 	h = 5
 
  	a = 0
  	do i=1, np
@@ -17,7 +20,7 @@ module potendirect
  				dx = x(:,i) - x(:,j)
  				r2 = dot_product(dx,dx)
  				r  = sqrt(r2)
- 				a(:,i) = a(:,i) - m(j)*(1/(r2*r))*dx
+ 				a(:,i) = a(:,i) - m(j)*(1/(r2*r+h**1.5))*dx
  			endif 
  		enddo
  	enddo
