@@ -165,7 +165,8 @@ module octree
    ! currentnode is the node which we are trying to insert
    ! endnode is the current latest node 
    integer, intent(out) :: currentnode, endnode
-   integer :: olddata
+   ! 10 particles allowed in bucket 
+   integer :: olddata(10)
    integer :: i, octant
    ! index of the child node 
    integer :: child
@@ -177,6 +178,7 @@ module octree
     write(*,*) "Size is: ", nodes(currentnode) % size
 
     if (nodes(currentnode) % size  == 0 ) then
+      write(*,*) "Cannot insert particle, underflow error!"
       stop
     endif 
 
@@ -187,17 +189,18 @@ module octree
    !	thedata = nodes(currentnode) % data
    	!if (thedata == 0) then
     !write(*,*) nodes(currentnode) % data
-    if (nodes(currentnode)%data .EQ. 0) then
+    if (node_full(nodes(currentnode)) .EQV. .FALSE. ) then
    	 write(*,*) "Leaf node Met"
      ! set data as particle data
-     nodes(currentnode)%data = currentparticle
+     ! nodes(currentnode)%data = currentparticle
+     call insert_data(nodes(currentnode), currentparticle)
      return 
    ! node is a leaf but has a particle 
     
    	else
    		write(*,*) "Splitting part 1 "
       ! save old data so it can be reinserted later
-      olddata =  nodes(currentnode) % data
+      olddata(:) =  nodes(currentnode) % data(:)
       nodes(currentnode)% data = 0
       ! no longer a leaf node 
       nodes(currentnode)% isLeaf = .FALSE.
@@ -237,24 +240,30 @@ module octree
       ! old data 
 
       ! I THINK I NEED TO USE CHILD ORIGIN RATHER THAN CURRENTNODE
-      origin = nodes(currentnode) % origin
-      write(*,*) "Origin is: ", origin
-      call get_containingbox(x,olddata,octant,origin)
-      write(*,*) x(:,olddata)
-      write(*,*) x(:, currentparticle)
-      write(*,*) "Delta is: ", x(:,olddata)-x(:,currentparticle)
-      write(*,*) "Octant is: ", octant
+
+      ! INSERT ALL PARTICLES IN THE OLD BUCKET
+
+      do i=1,10
+        origin = nodes(currentnode) % origin
+        write(*,*) "Origin is: ", origin
+        call get_containingbox(x,olddata(i),octant,origin)
+        write(*,*) x(:,olddata(i))
+        write(*,*) x(:, currentparticle)
+        write(*,*) "Delta is: ", x(:,olddata(i))-x(:,currentparticle)
+        write(*,*) "Octant is: ", octant
 
 
       ! index of the child node that is being inserted
-      child = nodes(currentnode) % children(octant)
+        child = nodes(currentnode) % children(octant)
        
 
-      call insert_particle(nodes,x,v,a,child,olddata,endnode)
-      !write(*,*) nodes(child) % data
-      !write(*,*) nodes(child) % isLeaf
-      !write(*,*) "Old particle finished"
+        call insert_particle(nodes,x,v,a,child,olddata(i),endnode)
+        !write(*,*) nodes(child) % data
+        !write(*,*) nodes(child) % isLeaf
+        !write(*,*) "Old particle finished"
 
+      enddo
+        
       ! new data
       call get_containingbox(x,currentparticle,octant,origin)
       write(*,*) "Octant is: ",  octant
@@ -372,10 +381,11 @@ module octree
 
   write(*,*) "Depth: ", depth
 
-  if (nodes(currentnode)% data .NE. 0 ) then 
-    write(*,*) x(:,nodes(currentnode) % data)
-  endif 
-
+  do i=1, 10
+    if (nodes(currentnode)% data(i) .NE. 0 ) then 
+      write(*,*) x(:,nodes(currentnode) % data(i))
+    endif 
+  enddo 
   do i=1, 8
     if (nodes(currentnode) % children(i) .NE. 0) then
       newdepth = depth + 1

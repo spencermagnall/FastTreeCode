@@ -12,7 +12,8 @@ module sphere_dist
    ! 40 GOTO 10
 
    real, intent(out) :: r(:,:)
-   integer, intent(in) :: np,start,end
+   integer, intent(in) :: np
+   integer, optional, intent(in) :: start, end 
    ! Radius of sphere
    real, intent(in) :: radius
    ! Center of the Sphere

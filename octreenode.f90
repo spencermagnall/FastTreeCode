@@ -22,8 +22,9 @@ module octreetype
     real :: centerofmass(3) 
 
     ! the index of the data
-    ! 0 = no data 
-    integer :: data
+    ! 0 = no data
+    ! set bucket size to 10 
+    integer :: data(10)
 
     ! if leaf node
     ! 0 false, 1 true 
@@ -45,6 +46,27 @@ module octreetype
     ! subroutine for uninitialized node
     this % isleaf = .FALSE. 
     this % children(:) = 0
-    this % data = 0
+    this % data(:) = 0
     end subroutine null_node
+
+    logical function node_full(this) result(flag)
+     type(octreenode), intent(in) :: this
+      flag = this % data(10) .NE. 0
+    end function node_full
+
+    subroutine insert_data(this,data)
+     type(octreenode), intent(out) :: this
+     integer, intent(in) :: data
+     integer :: i
+
+     do i=1, 10
+      if (this % data(i) .EQ. 0) then 
+       this % data(i) = data 
+       EXIT
+      end if 
+     enddo 
+    
+    end subroutine insert_data   
+
+
 end module octreetype

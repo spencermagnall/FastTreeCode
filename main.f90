@@ -14,22 +14,26 @@ program nbody
       integer :: i,iter,output_freq
       real :: rand
       real :: t, dt,tmax
+      real :: center(3)
       !x(:,1) = (/2.0,2.0,2.0/)
       !x(:,2) = (/1,1,1/)
       !x(:,3) = (/3.0,3.0,3.0/)
       !x(:,4) = (/4.0,4.0,4.0/)
 
-      !call setup_particles(x,nopart,10.0)
+      center = 0.0
+      call setup_particles(x,nopart,10.0,center,1,nopart)
      
       !do i=1, nopart
       !  print*, x(:,i)
       !enddo 
       
-      !call maketree(nodes,x,v,a,nopart)
+      call maketree(nodes,x,v,a,nopart)
 
       !write(*,*) x(:,nodes(1) % data)
       !write(*,*) x(:,nodes(2) % data)
-      !call print_tree(nodes,x,0,1)
+      call print_tree(nodes,x,0,1)
+
+      STOP
       t = 0
       dt = 0.1
       iter = 0 
