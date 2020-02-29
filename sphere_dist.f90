@@ -37,7 +37,7 @@ module sphere_dist
    open(unit=67, file="dist", position='append') 
    do while (i < end)
    	
-   	write(*,*) i
+   	!write(*,*) i
    	x = RAND()
    	call negative_rand(x) 
     x =  x *radius + c(1)
@@ -60,7 +60,7 @@ module sphere_dist
      r(2,i) = y
      r(3,i) = z
      write(67,*) r(:,i)
-
+     write(*,*) r(:,i) 
      
     endif 
    enddo
@@ -71,7 +71,7 @@ module sphere_dist
   subroutine negative_rand(input)
    real, intent(out) :: input
    input = 2*input - 1
-   write(*,*) input  
+   !write(*,*) input  
   end subroutine negative_rand
 
 end module sphere_dist  

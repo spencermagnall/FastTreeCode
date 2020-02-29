@@ -11,16 +11,16 @@ module potendirect
  	real :: dx(3), r, r2
  	real :: h 
 
- 	h = 5
+ 	h = 50.0
 
- 	a = 0
+ 	a = 0.0
  	do i=1, np
  		do j=1, np
  			if (j/= i) then ! Don't want to calculate the force from a particle on itself
  				dx = x(:,i) - x(:,j)
  				r2 = dot_product(dx,dx)
  				r  = sqrt(r2)
- 				a(:,i) = a(:,i) - m(j)*(1/(r2*r+h**1.5))*dx
+ 				a(:,i) = a(:,i) - m(j)*dx*(1/(r2*r)) * (1/(h**1.5))
  			endif 
  		enddo
  	enddo

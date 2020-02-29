@@ -30,6 +30,9 @@ module octreetype
     ! 0 false, 1 true 
     logical :: isleaf
 
+    ! if body
+    logical :: isBody
+
     end type
     contains
     subroutine new_node(this,size,origin)
