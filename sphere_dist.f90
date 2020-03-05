@@ -24,6 +24,10 @@ module sphere_dist
    integer :: i
    real :: c(3) 
 
+   x = 0.0
+   y = 0.0
+   z = 0.0
+
    if(present(center)) then
     c = center
    else 
@@ -37,19 +41,25 @@ module sphere_dist
    open(unit=67, file="dist", position='append') 
    do while (i < end)
    	
-   	!write(*,*) i
+   	write(*,*) i
    	x = RAND()
+    write(*,*) x
    	call negative_rand(x) 
     x =  x *radius + c(1)
 
     y =  RAND()
+    write(*,*) y
     call negative_rand(y)
     y = y * radius + c(2)
 
     z = RAND()
+    write(*,*) z
     call negative_rand(z)
     z = z * radius + c(3)
-    
+   
+    write(*,*) "X is = ", x
+    write(*,*) " Y is = ", y
+    write(*,*) "Z is = ", y
 
 
     implicteq = (x-c(1))**2 + (y-c(2))**2 + (z-c(3))**2

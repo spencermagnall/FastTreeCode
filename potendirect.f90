@@ -20,7 +20,7 @@ module potendirect
  				dx = x(:,i) - x(:,j)
  				r2 = dot_product(dx,dx)
  				r  = sqrt(r2)
- 				a(:,i) = a(:,i) - m(j)*dx*(1/(r2*r)) * (1/(h**1.5))
+ 				a(:,i) = a(:,i) - m(j)*dx*(1/(r2 + h**2)**1.5)
  			endif 
  		enddo
  	enddo

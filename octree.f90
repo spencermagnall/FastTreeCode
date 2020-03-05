@@ -32,15 +32,16 @@ module octree
 
 
    ! setup the root node
-   call new_node(nodes(1),1.e6,(/0.0,0.0,0.0/))
+   call new_node(nodes(1),1.e3,(/0.0,0.0,0.0/))
    
 
    ! endnode is now root
    endnode = 1
+   ! currentnode is also root
+   currentnode = 1
 
    ! iterate through all particles 
    do i =1, np
-    
    	write(*,*) "Particle: ",i
     write(*,*) "Endnode: " , endnode
     write(*,*) "currentnode: ", currentnode
@@ -172,9 +173,16 @@ module octree
    integer :: child
    real :: origin(3), size 
 
+   origin =0.0
+   size = 0.0
+   olddata = 0
+   octant =0
+   child = 0
+
    write(*,*) "CurrentNode is: ", currentnode
-    !write(*,*) "endnode is: ", endnode
+    write(*,*) "endnode is: ", endnode
     write(*,*) "Currentparticle is: ", currentparticle
+    write(*,*) "Part pos is: ", x(:,currentparticle)
     write(*,*) "Size is: ", nodes(currentnode) % size
 
     if (nodes(currentnode) % size  == 0 ) then
@@ -210,11 +218,13 @@ module octree
         ! gen new octants 
         origin = nodes(currentnode) % origin
         size = nodes(currentnode) % size
+        write(*,*) "Origin: ", origin
+        write(*, *) "Size: ", size 
 
       	! find new origin and size for octants
       	call gen_octant(origin,size,i)
-        write(*,*) origin
-        !write(*, *) size 
+        write(*,*) "Origin: ", origin
+        write(*, *) "Size: ", size 
       	! store this new information
       	!nodes(endnode+i) % origin = origin
       	!nodes(endnode+i) % size =  size
@@ -255,6 +265,7 @@ module octree
 
       ! index of the child node that is being inserted
         child = nodes(currentnode) % children(octant)
+        write(*,*) "Child is: ", child
        
 
         call insert_particle(nodes,x,v,a,child,olddata(i),endnode)
@@ -267,14 +278,16 @@ module octree
       ! new data
       call get_containingbox(x,currentparticle,octant,origin)
       write(*,*) "Octant is: ",  octant
+      write(*,*) "Third condition reached"
       !write(*,*) "Octant is: ", octant
       ! index of the child node that is being inserted
       child = nodes(currentnode) % children(octant)
+      write(*,*) "Child is 0?? ", child
       call insert_particle(nodes,x,v,a,child,currentparticle,endnode)
       write(*,*) x(:, currentparticle)
       
 
-      !write(*,*) "Insertion finished"
+      write(*,*) "Insertion finished"
 
 
       
@@ -283,11 +296,14 @@ module octree
     	! we are at an interior node 
     	! insert recursively until we reach leaf
       ! Should be able to insert from interior nodes 
+
+      ! HERE IS THE PROBLEM
       origin = nodes(currentnode) % origin
       write(*,*) "Interior"
     	call get_containingbox(x,currentparticle,octant,origin)
       write(*,*) "Octant:", octant
     	child = nodes(currentnode) % children(octant)
+      write(*,*) "CHild: ", child
     	call insert_particle(nodes,x,v,a,child,currentparticle,endnode) 
     end if    
 
@@ -380,6 +396,9 @@ module octree
   integer :: i, newdepth
 
   write(*,*) "Depth: ", depth
+  write(*,*) "Box Size: ", nodes(currentnode) % size
+  write(*,*) "Total Mass: ", nodes(currentnode) % totalMass
+  write(*,*) "Center of Mass: ", nodes(currentnode) % centerofmass
 
   do i=1, 10
     if (nodes(currentnode)% data(i) .NE. 0 ) then 

@@ -3,11 +3,12 @@ program nbody
       use setup_binary
       use step_leapfrog
       use output
-      use potendirect
+      use poten
       use momentum
+      use computemass
       implicit none 
       type(octreenode), allocatable :: nodes(:)
-      integer, parameter :: nopart = 10
+      integer, parameter :: nopart = 20
       real :: x(3, nopart)
       real :: v(3, nopart)
       real :: a(3, nopart)
@@ -19,6 +20,8 @@ program nbody
       real :: p(3)
       real:: pmag, pmagold, deltap 
       real :: angmom(3)
+      integer :: rootnode
+      real:: sumMass, cm(3)
       !x(:,1) = (/2.0,2.0,2.0/)
       !x(:,2) = (/1,1,1/)
       !x(:,3) = (/3.0,3.0,3.0/)
@@ -31,11 +34,11 @@ program nbody
       !  print*, x(:,i)
       !enddo 
       
-      !call maketree(nodes,x,v,a,nopart)
+      
 
       !write(*,*) x(:,nodes(1) % data)
       !write(*,*) x(:,nodes(2) % data)
-      !call print_tree(nodes,x,0,1)
+      
 
       !STOP
       t = 0
@@ -43,10 +46,18 @@ program nbody
       iter = 0 
       tmax = 10000*2*3.14159
       output_freq = 100 
+      rootNode = 1
+      sumMass = 0.0
+      cm = 0.0
       ! PUT PARTICLE SETUP HERE
       call init(x,v,m,nopart)
-      
-      call get_accel(x,a,m,nopart)
+      call maketree(nodes,x,v,a,nopart)
+      call print_tree(nodes,x,0,1)
+      !STOP
+      call get_com(x,v,m,nopart,nodes,rootNode,sumMass,cm) 
+      call print_tree(nodes,x,0,1)
+      STOP
+      !call get_accel(x,a,m,nopart,nodes)
       !STOP
       call write_output(x,v,m,nopart,t)
      ! STOP
@@ -56,11 +67,11 @@ program nbody
        pmag = sqrt(pmag)
         write(66,*) "t "," pmag ", " angm x ", " angm y ", " angm z ", " deltap"
         write(66,*) t,  pmag, angmom, 0.0
-      ! STOP
+       STOP
       do while(t < tmax)
             iter  = iter + 1
 
-            call step(x,v,a,m,dt,nopart)
+            call step(x,v,a,m,dt,nopart,nodes)
 
             t = t + dt
             write(*,*) t

@@ -41,6 +41,7 @@ module octreetype
      this % isleaf = .TRUE.
      this % children(:) = 0
      this % size = size
+     write(*,*) "Size set as: ", size
      this % origin = origin
     end subroutine new_node
 
@@ -50,6 +51,7 @@ module octreetype
     this % isleaf = .FALSE. 
     this % children(:) = 0
     this % data(:) = 0
+    this % size = 0.0
     end subroutine null_node
 
     logical function node_full(this) result(flag)

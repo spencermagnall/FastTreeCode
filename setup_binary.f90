@@ -13,7 +13,7 @@ module setup_binary
   integer :: start, end, i 
 
 
-  e = 0.0
+  e = 0.7
   a = 1000.0
   x = 0.0
   v = 0.0
@@ -103,7 +103,7 @@ end subroutine init_pointmass
   
 
   ! GENERATES PARTICLES IN SPHERICAL DIST AROUND CENTER 
-
+  write(*,*) "Add particles reached!"
   call setup_particles(x,np,radius,center,start,end)
 
 
