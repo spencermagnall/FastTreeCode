@@ -23,13 +23,13 @@ module poten
 
       do i=1, 8
        childindex = nodes(1) % children(i)
-       if (nodes(childindex)% isLeaf .EQV. .true. .AND. leafnodesfound .EQ. 0) then
+       if (nodes(childindex)% isLeaf .EQV. .true. .AND. leafnodesfound .EQ. 0 .AND. nodes(childindex) %data(1) .NE. 0) then
        	write(*, *) "Child index 1: ", childindex
         child1 = nodes(childindex)
         cm1(:) = nodes(childindex) % centerofmass
         mass1 = nodes(childindex) % totalmass
         leafnodesfound = leafnodesfound + 1
-       else if (nodes(childindex) % isLeaf .EQV. .true. .AND. leafnodesfound .EQ. 1) then
+       else if (nodes(childindex) % isLeaf .EQV. .true. .AND. leafnodesfound .EQ. 1 .AND. nodes(childindex) %data(1) .NE. 0) then
        	write(*, *) "Child index 2: ", childindex
         child2 = nodes(childindex)
         cm2(:) = nodes(childindex) % centerofmass
@@ -59,8 +59,11 @@ module poten
       enddo
 
       do i=1, 10
+      	write(*,*) "I: ",i
        nodeindex = child2%data(i)
+       write(*,*) "NodeIndex: ",nodeindex
        a(:,nodeindex) = a2
+
       enddo 
 
 

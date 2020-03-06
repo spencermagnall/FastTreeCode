@@ -67,9 +67,11 @@ end subroutine init_pointmass
   end = np/2
   write(*,*) "END IS = ", end 
   center1(1) = (1-e)/(1+q)*a
+  center1(2) = center1(1)
+  center1(3) = center1(1)
   call add_particles(x,np,center1,start,end)
 
-  center2(1) = -q * center1(1)
+  center2(:) = -q * center1(:)
   start = end + 1
   write(*,*) "START IS = ", start
   end = np

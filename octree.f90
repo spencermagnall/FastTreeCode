@@ -32,7 +32,7 @@ module octree
 
 
    ! setup the root node
-   call new_node(nodes(1),1.e3,(/0.0,0.0,0.0/))
+   call new_node(nodes(1),1.e6,(/0.0,0.0,0.0/))
    
 
    ! endnode is now root
@@ -187,6 +187,7 @@ module octree
 
     if (nodes(currentnode) % size  == 0 ) then
       write(*,*) "Cannot insert particle, underflow error!"
+      write(*,*) "Is your box big enough?"
       stop
     endif 
 

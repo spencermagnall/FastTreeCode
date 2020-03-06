@@ -44,7 +44,7 @@ program nbody
       t = 0
       dt = 10
       iter = 0 
-      tmax = 10000*2*3.14159
+      tmax = 1000000*2*3.14159
       output_freq = 100 
       rootNode = 1
       sumMass = 0.0
@@ -56,18 +56,17 @@ program nbody
       !STOP
       call get_com(x,v,m,nopart,nodes,rootNode,sumMass,cm) 
       call print_tree(nodes,x,0,1)
-      STOP
-      !call get_accel(x,a,m,nopart,nodes)
+      call get_accel(x,a,m,nopart,nodes)
       !STOP
       call write_output(x,v,m,nopart,t)
-     ! STOP
+      !STOP
        open(unit=66,file="Momentum",position="append")
        call get_momentum(x,v,m,p,angmom,nopart)
        pmag = dot_product(p,p)
        pmag = sqrt(pmag)
         write(66,*) "t "," pmag ", " angm x ", " angm y ", " angm z ", " deltap"
         write(66,*) t,  pmag, angmom, 0.0
-       STOP
+       !STOP
       do while(t < tmax)
             iter  = iter + 1
 
