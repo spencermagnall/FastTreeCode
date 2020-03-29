@@ -8,6 +8,7 @@ program nbody
       use momentum
       use computemass
       use opening_criterion
+      use interaction
       implicit none 
       type(octreenode), allocatable :: nodes(:)
       integer, parameter :: nopart = 20
@@ -62,6 +63,7 @@ program nbody
       rmax = 0.0
       call find_rmax(x,nodes,rootNode,rmax)
       call print_tree(nodes,x,0,1)
+      call interact(nodes(1),nodes(1),nodes,nopart)
       !call get_accel(x,a,m,nopart,nodes)
       STOP
       call write_output(x,v,a,m,nopart,t)

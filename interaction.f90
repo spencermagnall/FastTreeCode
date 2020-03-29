@@ -7,9 +7,9 @@ module interaction
 
  RECURSIVE subroutine interact(node1,node2,nodes,nopart)
   integer :: nopart 
-  type(octreenode), intent(inout) :: node1, node2, nodes(nopart)
+  type(octreenode), intent(inout) :: node1, node2, nodes(:)
   type(octreenode) :: newnode1,newnode2, splitnode, regnode
-  integer :: i, j, nodeindex1, nodeindex2 
+  integer :: i, j, nodeindex1, nodeindex2,counter 
   real :: rmax1, rmax2,cm1(3),cm2(3)
   real :: fnode(20),quads(6)
   real :: dr,dx,dy,dz,totmass
@@ -19,6 +19,9 @@ module interaction
   rmax2 = node2 % rmax 
 
   quads(:) = 0.0
+  counter = 0
+
+  fnode(:) = 0.0
 
   ! BODY SELF INTERACTION IS IGNORED
   nodesAreEqual = nodes_equal(node1,node2)
@@ -31,12 +34,17 @@ module interaction
     ! 64 in this case but some will be duplicates ???
     do i=1,8
       do j=1,8
+
         ! Get the index of the sub-cells
 
         ! If children exist
-        if (node1 % children(i) .NE. 0 .AND. node2 % children(j) .NE. 0) then 
+        if (i /= j .AND. node1 % children(i) .NE. 0 .AND. node2 % children(j) .NE. 0) then 
          nodeindex1 = node1 % children(i)
          nodeindex2 = node2 % children(j)
+         print*, nodeindex1
+         print*, nodeindex2
+         counter = counter + 1
+         print*,"Counter: ", counter
 
           ! Get the sub-cells
           newnode1 = nodes(nodeindex1)
@@ -74,16 +82,26 @@ module interaction
     cm1 = node1 % centerofmass
     cm2 = node2 % centerofmass
     dx = cm1(1) - cm2(1)
+    print*, "Dx: ", dx
     dy = cm1(2) - cm2(2)
+    print*, "Dy: ", dy
     dz = cm1(3) - cm2(3)
-    dr = norm2(cm1-cm2)
+    print*, "Dz: ", dz
+    dr = 1./(norm2(cm1-cm2))
+    print*, "Dr: ", dr 
+
+    fnode = 0.0
 
     totmass = node2 % totalmass
+    !totmass = 1.0
 
     call compute_fnode(dx,dy,dz,dr,totmass,quads,fnode)
 
     ! store coeff for walk phase 
     node1 % fnode = node1 % fnode + fnode
+
+    ! print poten
+    print*, "Poten is: ", fnode(20)
 
 
   ! THE NODE WITH THE LARGER RMAX IS SPLIT; up to 8 new MI are created and processed 
