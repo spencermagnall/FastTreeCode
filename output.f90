@@ -4,9 +4,9 @@ module output
 
 
 contains
- subroutine write_output(x,v,m,np,time)
+ subroutine write_output(x,v,a,m,np,time)
   integer, intent(in) :: np 
-  real, intent(in) :: x(3,np), v(3,np)
+  real, intent(in) :: x(3,np), v(3,np), a(3,np)
   real, intent(in) :: m(np)
   real, intent(in) :: time
   integer :: i
@@ -19,9 +19,10 @@ contains
 
   print "(a,f8.3)", ' writing '//trim(filename)//' t = ',time
   open(unit=67, file=filename,status='replace')
+  write(67,*) "x    y   z   vx  vy  vz  ax  ay  az  m"
   write(67,*) time
   do i=1, np
-     write(67,*) x(:,i), v(:,i), m(i)
+     write(67,*) x(:,i), v(:,i), a(:,i), m(i)
   enddo
   close(unit=67)
 

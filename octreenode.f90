@@ -33,6 +33,12 @@ module octreetype
     ! if body
     logical :: isBody
 
+    ! rmax for MAC
+    real :: rmax
+
+    ! taylor series coeff for the node 
+    real :: fnode(20)
+
     end type
     contains
     subroutine new_node(this,size,origin)
@@ -52,6 +58,7 @@ module octreetype
     this % children(:) = 0
     this % data(:) = 0
     this % size = 0.0
+    this % totalmass = 0.0
     end subroutine null_node
 
     logical function node_full(this) result(flag)

@@ -4,7 +4,8 @@ FFLAGS= -fdefault-real-8 -fdefault-double-8 -fbounds-check -Wall -O3
 POTEN = forcebinary.f90
 STEP = step_leapfrog.f90
 SETUP = setup_binary.f90
-SRC= octreenode.f90 octree.f90 computemass.f90  ${POTEN} ${STEP} output.f90 momentum.f90 sphere_dist.f90 ${SETUP}  main.f90 
+TREE = contrivedtree.f90
+SRC= octreenode.f90 openingcriterion.f90 octree.f90 contrivedtree.f90 taylor.f90 interaction.f90   computemass.f90  ${POTEN} ${STEP} output.f90 momentum.f90 sphere_dist.f90 ${SETUP}  main.f90 
 OBJ=${SRC:.f90=.o}
 
 %.o: %.f90
@@ -15,7 +16,7 @@ nbody: $(OBJ)
 clean:
 	rm *.o *.mod
 	rm nbody
-cleanrun:
+cleanruns:
 	rm -f snap_*
 	rm -f Momentum
 

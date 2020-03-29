@@ -1,11 +1,13 @@
 program nbody
-      use octree
+      !use octree
+      use contrivedtree
       use setup_binary
       use step_leapfrog
       use output
       use poten
       use momentum
       use computemass
+      use opening_criterion
       implicit none 
       type(octreenode), allocatable :: nodes(:)
       integer, parameter :: nopart = 20
@@ -19,7 +21,7 @@ program nbody
       real :: center(3)
       real :: p(3)
       real:: pmag, pmagold, deltap 
-      real :: angmom(3)
+      real :: angmom(3),rmax
       integer :: rootnode
       real:: sumMass, cm(3)
       !x(:,1) = (/2.0,2.0,2.0/)
@@ -42,25 +44,29 @@ program nbody
 
       !STOP
       t = 0
-      dt = 10
+      dt = 1000
       iter = 0 
       tmax = 1000000*2*3.14159
-      output_freq = 100 
+      output_freq = 1 
       rootNode = 1
       sumMass = 0.0
       cm = 0.0
       ! PUT PARTICLE SETUP HERE
       call init(x,v,m,nopart)
-      call maketree(nodes,x,v,a,nopart)
+      call maketreecontrived(nodes,x,v,a,nopart)
+      !call maketree(nodes,x,v,a,nopart)
       call print_tree(nodes,x,0,1)
-      !STOP
-      call get_com(x,v,m,nopart,nodes,rootNode,sumMass,cm) 
+      call get_com(x,v,m,nopart,nodes,rootNode,sumMass,cm)
+      ! Find rmax for each node
+      rootNode = 1
+      rmax = 0.0
+      call find_rmax(x,nodes,rootNode,rmax)
       call print_tree(nodes,x,0,1)
-      call get_accel(x,a,m,nopart,nodes)
+      !call get_accel(x,a,m,nopart,nodes)
+      STOP
+      call write_output(x,v,a,m,nopart,t)
       !STOP
-      call write_output(x,v,m,nopart,t)
-      !STOP
-       open(unit=66,file="Momentum",position="append")
+       open(unit=66,file="Momentum",status="replace")
        call get_momentum(x,v,m,p,angmom,nopart)
        pmag = dot_product(p,p)
        pmag = sqrt(pmag)
@@ -76,7 +82,11 @@ program nbody
             write(*,*) t
 
             if (mod(iter,output_freq) .EQ. 0) then
-                  call write_output(x,v,m,nopart,t)
+                  if (t == 10000.OR. t ==11000) then
+                      call print_tree(nodes,x,0,1)
+                  !    stop
+                  endif
+                  call write_output(x,v,a,m,nopart,t)
             end if 
             pmagold = pmag
             call get_momentum(x,v,m,p,angmom,nopart)
@@ -87,6 +97,7 @@ program nbody
 
             !STOP            
 
-      enddo 
+      enddo
+      close(66)
 
 end program nbody

@@ -397,9 +397,11 @@ module octree
   integer :: i, newdepth
 
   write(*,*) "Depth: ", depth
+  write(*,*) "Isleaf: ",nodes(currentnode) % isLeaf 
   write(*,*) "Box Size: ", nodes(currentnode) % size
   write(*,*) "Total Mass: ", nodes(currentnode) % totalMass
   write(*,*) "Center of Mass: ", nodes(currentnode) % centerofmass
+  write(*,*) "Rmax: ", nodes(currentnode) % rmax
 
   do i=1, 10
     if (nodes(currentnode)% data(i) .NE. 0 ) then 
@@ -414,6 +416,18 @@ module octree
   enddo 
 
 end subroutine print_tree
+
+subroutine cleartree(nodes)
+  type(octreenode), allocatable, intent(out) :: nodes(:)
+  integer :: i,sizeof
+
+  sizeof = size(nodes)
+
+  do i=1,sizeof
+    call null_node(nodes(i))
+  enddo 
+
+end subroutine cleartree
 
 end module octree
   

@@ -44,11 +44,11 @@ end subroutine init_pointmass
   real, intent(out) :: m(np)
   real :: e, a 
   real :: mtotal, q, m1,m2
-  real :: center1(3), center2(3)
+  real :: center1(3), center2(3), r(3),r2,rmag,rhat(3),vhat(3)
   integer :: start, end, i 
 
-  e = 0.0
-  a = 1000.0
+  e = 0.5
+  a = 10000.0
   x = 0.0
   v = 0.0
   m = 0.0
@@ -58,6 +58,11 @@ end subroutine init_pointmass
   q = m2/m1
   center1 = 0.0
   center2 = 0.0
+  r = 0
+  r2 = 0
+  rhat = 0
+  rmag =0
+  vhat =0
 
   mtotal = np
   q = 1.0 
@@ -67,11 +72,24 @@ end subroutine init_pointmass
   end = np/2
   write(*,*) "END IS = ", end 
   center1(1) = (1-e)/(1+q)*a
-  center1(2) = center1(1)
-  center1(3) = center1(1)
+  !center1(2) = center1(1)
+  !center1(3) = center1(1)
   call add_particles(x,np,center1,start,end)
 
-  center2(:) = -q * center1(:)
+  ! Get unit vector in direction of r
+  r = center1
+  r2 = dot_product(r,r)
+  rmag = sqrt(r2)
+  rhat = r/rmag
+  ! get  vhat
+  !vhat(1) = rhat(1)
+  !vhat(2) = -rhat(2)
+  !vhat(3) = rhat(3)
+
+  write(*,*) "Dot product: ", dot_product(vhat,rhat)
+
+
+  center2(1) = -q * center1(1)
   start = end + 1
   write(*,*) "START IS = ", start
   end = np
@@ -80,6 +98,7 @@ end subroutine init_pointmass
   start = 1
   end = np/2
   do i=start, end
+     !v(:,i) = vhat
      v(2,i) = 1/(1+q) * sqrt(mtotal/a * ((1.0+e)/(1.-e)))
      !write(*,*) "Velocity: ", v(2,i)
   enddo

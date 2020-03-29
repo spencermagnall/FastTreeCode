@@ -17,6 +17,8 @@ RECURSIVE subroutine get_com(x,v,m,np,nodes,currentnode,sumMass,cm)
  write(*, *) "CurrentNode: ", currentnode
  ! BASE CASE 
  ! If we have a leaf node 
+ massChild = 0.0
+ cmChild = 0.0
  if (nodes(currentnode) % isLeaf .EQV. .TRUE.) then
     sumMass = 0.0
     cm = 0.0
@@ -28,6 +30,7 @@ RECURSIVE subroutine get_com(x,v,m,np,nodes,currentnode,sumMass,cm)
      ! Get the index of the datapoint and then sum the Mass
      dataIndex = nodes(currentnode)%data(i)
      sumMass = sumMass + m(dataIndex)
+     !write(*,*) "Summass"
     endif 
    enddo
 
@@ -62,11 +65,10 @@ RECURSIVE subroutine get_com(x,v,m,np,nodes,currentnode,sumMass,cm)
     childindex = nodes(currentnode) % children(i)
     if (childindex .NE. 0) then 
       call get_com(x,v,m,np,nodes,childindex,sumMass,cm)
+
       massChild(i) = sumMass
       cmChild(:,i) = cm
-    else
-      massChild(i) = 0.0
-      cmChild(:,i) = cm
+    
     endif 
    enddo 
  
