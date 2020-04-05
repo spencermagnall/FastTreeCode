@@ -16,9 +16,9 @@ module octree
    integer, intent(in) :: np
    type(octreenode), allocatable, intent(out) :: nodes(:)
    real, intent(in) :: x(:,:), v(:,:), a(:,:)
-   integer :: i, root,j
+   integer :: i
    integer :: currentnode
-   integer :: endnode, oldnode
+   integer :: endnode
 
    ! allocate nodes for tree
    allocate(nodes(maxnodes))
@@ -42,7 +42,7 @@ module octree
 
    ! iterate through all particles 
    do i =1, np
-   	write(*,*) "Particle: ",i
+    write(*,*) "Particle: ",i
     write(*,*) "Endnode: " , endnode
     write(*,*) "currentnode: ", currentnode
     ! if tree is full expand it 
@@ -75,12 +75,11 @@ module octree
 
   end subroutine maketree
 
-  subroutine sort_by_octant(x, np, origin, size, x1, x2, x3, x4, x5, x6, x7, x8)
+  subroutine sort_by_octant(x, np, origin, x1, x2, x3, x4, x5, x6, x7, x8)
     ! work out what octant each particle is in
     ! so we can paralize  
     real, intent(in) :: x(:,:)
     real, intent(in) :: origin(3)
-    real, intent(in) :: size
     integer, intent(in) :: np
     real, allocatable, intent(out) :: x1(:,:), x2(:,:),x3(:,:),x4(:,:),x5(:,:),x6(:,:),x7(:,:),x8(:,:)
     integer :: octant, i, length
@@ -134,6 +133,9 @@ module octree
    type(octreenode) :: temp(size(node))
    integer :: newsize,oldsize, i
 
+
+   ! supress warnings 
+   oldsize = 1
    ! increase the number of possible nodes by factor of 2
    maxnodes = oldsize
    newsize = maxnodes*2
@@ -194,20 +196,20 @@ module octree
    ! if we have a leaf node 
    ! and it is empty
    if (nodes(currentnode)%isLeaf .EQV. .TRUE. ) then
-   	!write(*,*) "First if"
+    !write(*,*) "First if"
    !	thedata = nodes(currentnode) % data
-   	!if (thedata == 0) then
+    !if (thedata == 0) then
     !write(*,*) nodes(currentnode) % data
     if (node_full(nodes(currentnode)) .EQV. .FALSE. ) then
-   	 write(*,*) "Leaf node Met"
+     write(*,*) "Leaf node Met"
      ! set data as particle data
      ! nodes(currentnode)%data = currentparticle
      call insert_data(nodes(currentnode), currentparticle)
      return 
    ! node is a leaf but has a particle 
     
-   	else
-   		write(*,*) "Splitting part 1 "
+    else
+      write(*,*) "Splitting part 1 "
       ! save old data so it can be reinserted later
       olddata(:) =  nodes(currentnode) % data(:)
       nodes(currentnode)% data = 0
@@ -222,19 +224,19 @@ module octree
         write(*,*) "Origin: ", origin
         write(*, *) "Size: ", size 
 
-      	! find new origin and size for octants
-      	call gen_octant(origin,size,i)
+        ! find new origin and size for octants
+        call gen_octant(origin,size,i)
         write(*,*) "Origin: ", origin
         write(*, *) "Size: ", size 
-      	! store this new information
-      	!nodes(endnode+i) % origin = origin
-      	!nodes(endnode+i) % size =  size
+        ! store this new information
+        !nodes(endnode+i) % origin = origin
+        !nodes(endnode+i) % size =  size
         !write(*,*) size
-      	!nodes(endnode+i) % isLeaf = .TRUE.
+        !nodes(endnode+i) % isLeaf = .TRUE.
         !nodes(endnode+i) % data = 0
-      	! let the parent node know its children
-      	!nodes(currentnode) % children(i) = endnode + i
-      	!print*, nodes(currentnode) % children(i)
+        ! let the parent node know its children
+        !nodes(currentnode) % children(i) = endnode + i
+        !print*, nodes(currentnode) % children(i)
         call new_node(nodes(endnode+i), size, origin)
         nodes(currentnode) % children(i) = endnode + i 
       enddo
@@ -294,44 +296,44 @@ module octree
       
       end if
     else
-    	! we are at an interior node 
-    	! insert recursively until we reach leaf
+      ! we are at an interior node 
+      ! insert recursively until we reach leaf
       ! Should be able to insert from interior nodes 
 
       ! HERE IS THE PROBLEM
       origin = nodes(currentnode) % origin
       write(*,*) "Interior"
-    	call get_containingbox(x,currentparticle,octant,origin)
+      call get_containingbox(x,currentparticle,octant,origin)
       write(*,*) "Octant:", octant
-    	child = nodes(currentnode) % children(octant)
+      child = nodes(currentnode) % children(octant)
       write(*,*) "CHild: ", child
-    	call insert_particle(nodes,x,v,a,child,currentparticle,endnode) 
+      call insert_particle(nodes,x,v,a,child,currentparticle,endnode) 
     end if    
 
   end subroutine insert_particle
 
   subroutine get_containingbox(x,currentparticle,octant,origin)
-  	real, intent(in) :: x(:,:), origin(3)
-  	integer, intent(in) :: currentparticle
-  	integer, intent(out) :: octant
+    real, intent(in) :: x(:,:), origin(3)
+    integer, intent(in) :: currentparticle
+    integer, intent(out) :: octant
 
     octant = 0
 
-  	! if z is smaller than origin
-  	! split into two quadtrees based on z value 
+    ! if z is smaller than origin
+    ! split into two quadtrees based on z value 
   	if (x(3,currentparticle) < origin(3)) then
-  		octant = 4
+     octant = 4
   	end if 
 
-  	! This isn't needed 
+   ! This isn't needed 
   	if (x(1,currentparticle) >= origin(1) .AND. x(2,currentparticle) >= origin(2)) then 
-  		octant = octant + 0
+      octant = octant + 0
   	else if (x(1,currentparticle) < origin(1) .AND. x(2,currentparticle) >= origin(2)) then 
-  		octant = octant  + 1
+      octant = octant  + 1
   	else if (x(1,currentparticle) < origin(1) .AND. x(2,currentparticle) < origin(2)) then 
-  		octant = octant + 2
+      octant = octant + 2
   	else if (x(1,currentparticle) >= origin(1) .AND. x(2,currentparticle) < origin(2)) then 
-  		octant = octant + 3
+      octant = octant + 3
   	end if
 
     octant = octant + 1
@@ -353,39 +355,39 @@ module octree
 
    ! This is very ugly but I can't think of a better way
    if (octant .EQ. 1) then
-   	origin(1) = origin(1) + halfsize*0.5
+    origin(1) = origin(1) + halfsize*0.5
     origin(2) = origin(2) + halfsize*0.5
     origin(3) = origin(3) + halfsize*0.5
 
 
    else if (octant .EQ. 2) then
-   	origin(1) = origin(1) - halfsize * 0.5
-   	origin(2) = origin(2) + halfsize * 0.5
-   	origin(3) = origin(3) + halfsize * 0.5
+    origin(1) = origin(1) - halfsize * 0.5
+    origin(2) = origin(2) + halfsize * 0.5
+    origin(3) = origin(3) + halfsize * 0.5
    else if (octant .EQ. 3) then
-   	origin(1) = origin(1) - halfsize * 0.5
-   	origin(2) = origin(2) - halfsize * 0.5
-   	origin(3) = origin(3) + halfsize * 0.5
+    origin(1) = origin(1) - halfsize * 0.5
+    origin(2) = origin(2) - halfsize * 0.5
+    origin(3) = origin(3) + halfsize * 0.5
    else if (octant .EQ. 4) then
-   	origin(1) = origin(1) + halfsize * 0.5
-   	origin(2) = origin(2) - halfsize * 0.5
-   	origin(3) = origin(3) + halfsize * 0.5
+    origin(1) = origin(1) + halfsize * 0.5
+    origin(2) = origin(2) - halfsize * 0.5
+    origin(3) = origin(3) + halfsize * 0.5
    else if (octant .EQ. 5) then
-   	origin(1) = origin(1) +halfsize * 0.5
-   	origin(2) = origin(2) + halfsize * 0.5
-   	origin(3) = origin(3) - halfsize * 0.5
+    origin(1) = origin(1) +halfsize * 0.5
+    origin(2) = origin(2) + halfsize * 0.5
+    origin(3) = origin(3) - halfsize * 0.5
    else if (octant .EQ. 6) then
-   	origin(1) = origin(1) - halfsize * 0.5
-   	origin(2) = origin(2) + halfsize * 0.5
-   	origin(3) = origin(3) - halfsize * 0.5
+    origin(1) = origin(1) - halfsize * 0.5
+    origin(2) = origin(2) + halfsize * 0.5
+    origin(3) = origin(3) - halfsize * 0.5
    else if (octant .EQ. 7) then
-   	origin(1) = origin(1) - halfsize * 0.5
-   	origin(2) = origin(2) - halfsize * 0.5
-   	origin(3) = origin(3) - halfsize * 0.5
+    origin(1) = origin(1) - halfsize * 0.5
+    origin(2) = origin(2) - halfsize * 0.5
+    origin(3) = origin(3) - halfsize * 0.5
    else if (octant .EQ. 8) then
-   	origin(1) = origin(1) + halfsize * 0.5
-   	origin(2) = origin(2) - halfsize * 0.5
-   	origin(3) = origin(3) - halfsize * 0.5
+    origin(1) = origin(1) + halfsize * 0.5
+    origin(2) = origin(2) - halfsize * 0.5
+    origin(3) = origin(3) - halfsize * 0.5
    end if
     
  end subroutine gen_octant

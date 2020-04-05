@@ -11,7 +11,7 @@ module sphere_dist
    ! 30 If particle is within the surface add it, otherwise start again.
    ! 40 GOTO 10
 
-   real, intent(out) :: r(:,:)
+   real, intent(out) :: r(3,np)
    integer, intent(in) :: np
    integer, optional, intent(in) :: start, end 
    ! Radius of sphere
@@ -40,11 +40,11 @@ module sphere_dist
 
    open(unit=67, file="dist", position='append') 
    do while (i < end)
-   	
-   	write(*,*) i
-   	x = RAND()
+   
+    write(*,*) i
+    x = RAND()
     write(*,*) x
-   	call negative_rand(x) 
+    call negative_rand(x) 
     x =  x *radius + c(1)
 
     y =  RAND()
@@ -79,7 +79,7 @@ module sphere_dist
   end subroutine setup_particles
 
   subroutine negative_rand(input)
-   real, intent(out) :: input
+   real, intent(inout) :: input
    input = 2*input - 1
    !write(*,*) input  
   end subroutine negative_rand

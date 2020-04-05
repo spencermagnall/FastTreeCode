@@ -11,9 +11,9 @@ module contrivedtree
    integer, intent(in) :: np
    type(octreenode), allocatable, intent(out) :: nodes(:)
    real, intent(in) :: x(:,:), v(:,:), a(:,:)
-   integer :: i, root,j
+   integer :: i
    integer :: currentnode
-   integer :: endnode, oldnode
+   integer :: endnode
    real :: origin(3), size
 
    ! allocate nodes for tree
@@ -101,7 +101,7 @@ module contrivedtree
    integer, intent(out) :: currentnode, endnode
    ! 10 particles allowed in bucket 
    integer :: olddata(10)
-   integer :: i, octant
+   integer :: octant
    ! index of the child node 
    integer :: child
    real :: origin(3), size 
@@ -111,6 +111,10 @@ module contrivedtree
    olddata = 0
    octant =0
    child = 0
+
+   ! supress warnings
+   endnode = 1
+   currentnode = 1
 
    ! Divide particles into +x and -x 
 

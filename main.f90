@@ -1,23 +1,24 @@
 program nbody
       !use octree
       use contrivedtree
-      use setup_binary
+      !use setup_binary
+      use plummer_dist
       use step_leapfrog
       use output
-      use poten
+      !use poten
       use momentum
       use computemass
       use opening_criterion
       use interaction
       implicit none 
       type(octreenode), allocatable :: nodes(:)
-      integer, parameter :: nopart = 20
+      integer, parameter :: nopart = 2000
       real :: x(3, nopart)
       real :: v(3, nopart)
       real :: a(3, nopart)
+      real :: poten(nopart)
       real :: m(nopart)
-      integer :: i,iter,output_freq
-      real :: rand
+      integer :: iter,output_freq
       real :: t, dt,tmax
       real :: center(3)
       real :: p(3)
@@ -25,6 +26,7 @@ program nbody
       real :: angmom(3),rmax
       integer :: rootnode
       real:: sumMass, cm(3)
+      
       !x(:,1) = (/2.0,2.0,2.0/)
       !x(:,2) = (/1,1,1/)
       !x(:,3) = (/3.0,3.0,3.0/)
@@ -54,6 +56,8 @@ program nbody
       cm = 0.0
       ! PUT PARTICLE SETUP HERE
       call init(x,v,m,nopart)
+      call write_output(x,v,a,m,nopart,t)
+      STOP
       call maketreecontrived(nodes,x,v,a,nopart)
       !call maketree(nodes,x,v,a,nopart)
       call print_tree(nodes,x,0,1)
@@ -63,7 +67,7 @@ program nbody
       rmax = 0.0
       call find_rmax(x,nodes,rootNode,rmax)
       call print_tree(nodes,x,0,1)
-      call interact(nodes(1),nodes(1),nodes,nopart)
+      call interact(nodes(1),nodes(1),nodes,x,m,poten, nopart)
       !call get_accel(x,a,m,nopart,nodes)
       STOP
       call write_output(x,v,a,m,nopart,t)

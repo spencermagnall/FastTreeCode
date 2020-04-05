@@ -1,5 +1,5 @@
 module step_leapfrog
- use poten
+ use potendirect
  use octree 
  use computemass 
  implicit none
@@ -27,7 +27,7 @@ module step_leapfrog
         !call cleartree(nodes)
         call maketree(nodes,x,v,a,np)
         call get_com(x,v,m,np,nodes,rootnode,sumMass,cm)
-        call get_accel(x,a,m,np,nodes)
+        call get_accel(x,a,m,np)
     endif 
 
     do i=1, np

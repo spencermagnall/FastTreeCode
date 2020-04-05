@@ -1,18 +1,23 @@
 module interaction
  use octree
  use opening_criterion
- use taylor_expansions 
+ use taylor_expansions
+ use potendirect  
 
  contains 
 
- RECURSIVE subroutine interact(node1,node2,nodes,nopart)
-  integer :: nopart 
+ RECURSIVE subroutine interact(node1,node2,nodes,x,m,poten,nopart)
+  integer, intent(in) :: nopart 
   type(octreenode), intent(inout) :: node1, node2, nodes(:)
+  real, intent(in) :: x(3,nopart), m(3,nopart)
+  real, intent(inout) :: poten(nopart)
   type(octreenode) :: newnode1,newnode2, splitnode, regnode
   integer :: i, j, nodeindex1, nodeindex2,counter 
   real :: rmax1, rmax2,cm1(3),cm2(3)
   real :: fnode(20),quads(6)
   real :: dr,dx,dy,dz,totmass
+  integer :: particleindex(10) 
+
   logical :: nodesAreEqual
   
   rmax1 = node1 % rmax
@@ -22,12 +27,23 @@ module interaction
   counter = 0
 
   fnode(:) = 0.0
+  particleindex = 0
 
+  ! STILL NEED TO COMPUTE BODY-BODY, BODY-NODE, NODE_BODY 
   ! BODY SELF INTERACTION IS IGNORED
   nodesAreEqual = nodes_equal(node1,node2)
   if (nodesAreEqual .EQV. .true. ) then
-   if (node1 % isBody .EQV. .true.) then  
-    return
+    ! If we are doing leafnode leafnode 
+   if (node1 % isLeaf .EQV. .true.) then 
+     ! Get index of all bodies 
+     do i=1, 10
+       if (node1 % data(i) /= 0) then
+         particleindex(i) = node1 % data(i)
+       endif  
+     enddo 
+    ! CALL DIRECT SUM 
+    call get_poten(x,poten,m,np,particleindex)
+   
    ! CELL SELF INTERACTION IS SPLIT INTO MI BETWEEN SUBNODES
    else
     ! AT MOST 36 Interactions 
@@ -38,7 +54,7 @@ module interaction
         ! Get the index of the sub-cells
 
         ! If children exist
-        if (i /= j .AND. node1 % children(i) .NE. 0 .AND. node2 % children(j) .NE. 0) then 
+        if (node1 % children(i) .NE. 0 .AND. node2 % children(j) .NE. 0) then 
          nodeindex1 = node1 % children(i)
          nodeindex2 = node2 % children(j)
          print*, nodeindex1
@@ -51,7 +67,7 @@ module interaction
           newnode2 = nodes(nodeindex2)
 
           ! call the interact for each of the sub-cells
-          call interact(newnode1, newnode2, nodes, nopart)
+          call interact(newnode1, newnode2, nodes,x,m,poten,nopart)
 
         endif 
 
@@ -62,15 +78,15 @@ module interaction
 
 
 
-  else 
+  elseif (well_seperated(node1,node2)) then 
+
 
   
 
   ! WELL SEPERATED NODE MI IS CALCULATED: TAYLOR COEFFs computed and added to 
   ! node data fields
 
-  if (well_seperated(node1,node2)) then 
-
+ 
     ! Call taylor COEFFs
     print*, "Calling taylor coeff: "
 
@@ -117,16 +133,24 @@ module interaction
     endif 
 
     ! process MI's on node and splitnode children
+    if (.not. splitnode % isLeaf ) then 
     do i=1,8
       nodeindex1 = splitnode % children(i)
       newnode1 = nodes(nodeindex1)
-      call interact(regnode,newnode1,nodes,nopart)
+      call interact(regnode,newnode1,nodes,x,m,poten,nopart)
     enddo
 
+    ! LEAF-NODE NODE 
+    elseif(rmax1 == rmax2) then
+
+    else 
+
+
+    endif 
+
 
   endif 
 
-  endif 
 
  end subroutine interact
 
