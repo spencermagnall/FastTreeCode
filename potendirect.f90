@@ -1,4 +1,5 @@
 module potendirect
+ use octreetype
  implicit none 
  contains 
  subroutine get_accel(x,a,m,np)
@@ -27,29 +28,54 @@ module potendirect
 
 end subroutine get_accel
 
-subroutine get_poten (x,poten,m,np,particlesindex)
+subroutine get_poten (x,poten,m,np,particlesindex1,particlesindex2)
   ! the index's of particles (BODIES)
-  integer, intent(in) :: particlesindex(10), np
+  integer, intent(in) :: particlesindex1(10), particlesindex2(10), np
   real, intent(in) :: x(3,np)
   ! technially this is potential 
   real, intent(inout) :: poten(np)
   real, intent(in) :: m(np)
-  real :: r,r2,dx(3),h
+  real :: r,r2,dx(3), h
   integer :: i, j
+  integer :: indexi,indexj
 
   h = 50.0
   ! in this case we don't want to reset a
   do i=1, 10
+   indexi = particlesindex1(i)
    do j=1, 10
-    if (j/=i ) then
-     dx = x(:,i) - x(:,j)
+    indexj = particlesindex2(j)
+    if (j/=i .AND. i /= 0 .AND. j /= 0) then
+     dx = x(:,indexi) - x(:,indexj)
      r2 = dot_product(dx,dx)
      r  = sqrt(r2)
-     poten(i) = poten(i) - m(j)*(1/(sqrt(r + h**2)))
+     poten(indexi) = poten(indexi) - m(indexj)*(1/(sqrt(r + h**2)))
     endif
   enddo
  enddo 
-end subroutine get_poten   
+end subroutine get_poten
 
+subroutine get_poten_node(x,poten,m,np,particlesindex,node)
+ integer, intent(in) :: particlesindex(10),np
+ real, intent(in) :: x(3,np)
+ real, intent(inout) :: poten(np)   
+ real, intent(in) :: m(np)
+ type(octreenode) :: node
+ real :: nodecm(3), nodemass
+ real :: dx,r2,r
+ integer :: i,indexi 
+ real :: h 
+ h = 50.0
+
+ nodecm = node % centerofmass
+ nodemass = node % totalmass
+
+ do i=1,10
+  indexi = particlesindex(i)
+
+
+enddo 
+
+end subroutine get_poten_node
 
 end module potendirect

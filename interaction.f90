@@ -16,7 +16,7 @@ module interaction
   real :: rmax1, rmax2,cm1(3),cm2(3)
   real :: fnode(20),quads(6)
   real :: dr,dx,dy,dz,totmass
-  integer :: particleindex(10) 
+  integer :: particleindex(10),particleindex2(10) 
 
   logical :: nodesAreEqual
   
@@ -27,7 +27,8 @@ module interaction
   counter = 0
 
   fnode(:) = 0.0
-  particleindex = 0
+  particleindex = 0.0
+  particleindex2 = 0.0
 
   ! STILL NEED TO COMPUTE BODY-BODY, BODY-NODE, NODE_BODY 
   ! BODY SELF INTERACTION IS IGNORED
@@ -42,7 +43,7 @@ module interaction
        endif  
      enddo 
     ! CALL DIRECT SUM 
-    call get_poten(x,poten,m,np,particleindex)
+    call get_poten(x,poten,m,np,particleindex,particleindex)
    
    ! CELL SELF INTERACTION IS SPLIT INTO MI BETWEEN SUBNODES
    else
@@ -141,9 +142,29 @@ module interaction
     enddo
 
     ! LEAF-NODE NODE 
-    elseif(rmax1 == rmax2) then
+    elseif(splitnode % isLeaf .AND. .NOT. regnode % isLeaf) then
 
+      ! Call poten function
+      ! Need a way to get all of the children of a node for direct sum
+
+    ! LEAF-NODE LEAF-NODE
     else 
+
+      ! This is direct sum as before 
+
+       !Get index of all bodies 
+     do i=1, 10
+       if (node1 % data(i) /= 0) then
+         particleindex(i) = node1 % data(i)
+       endif
+       if (node2 % data(i) /= 0) then
+         particleindex2(i) = node2 % data(i)
+       endif
+
+     enddo
+
+     ! CALL DIRECT SUM 
+    call get_poten(x,poten,m,np,particleindex,particleindex2)
 
 
     endif 
