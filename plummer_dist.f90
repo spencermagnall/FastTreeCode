@@ -8,7 +8,7 @@ module plummer_dist
    integer, intent(in) :: np
    real, intent(out) :: x(3,np), v(3,np),m(np)
    real :: x1, x2, x3, x4, x5,x6,x7
-   real :: r,r2, az, sphr
+   real :: r,rm,rm23,r2, az, sphr
    real :: xi,yi,zi
    real :: q, g,vr
    real :: totmass,mpart,vesc
@@ -37,7 +37,9 @@ module plummer_dist
     x3 = RAND()
     accepted = .FALSE.
 
-    r = x1
+    rm = x1*0.99
+    rm23 = rm **(2./3.)
+    r = sqrt(rm23/(1.-rm23))
     az = pi*(2.0*x2 - 1)
     sphr = ACOS(2.0*x3 - 1)
 

@@ -47,29 +47,29 @@ program nbody
 
       !STOP
       t = 0
-      dt = 1000
+      dt = 0.00001
       iter = 0 
-      tmax = 1000000*2*3.14159
-      output_freq = 1 
+      tmax = 5
+      output_freq = 100 
       rootNode = 1
       sumMass = 0.0
       cm = 0.0
       ! PUT PARTICLE SETUP HERE
       call init(x,v,m,nopart)
-      call write_output(x,v,a,m,nopart,t)
-      STOP
-      call maketreecontrived(nodes,x,v,a,nopart)
+      !call write_output(x,v,a,m,nopart,t)
+      !STOP
+      !call maketreecontrived(nodes,x,v,a,nopart)
       !call maketree(nodes,x,v,a,nopart)
-      call print_tree(nodes,x,0,1)
-      call get_com(x,v,m,nopart,nodes,rootNode,sumMass,cm)
+      !call print_tree(nodes,x,0,1)
+      !call get_com(x,v,m,nopart,nodes,rootNode,sumMass,cm)
       ! Find rmax for each node
       rootNode = 1
       rmax = 0.0
-      call find_rmax(x,nodes,rootNode,rmax)
-      call print_tree(nodes,x,0,1)
-      call interact(nodes(1),nodes(1),nodes,x,m,poten, nopart)
-      !call get_accel(x,a,m,nopart,nodes)
-      STOP
+      !call find_rmax(x,nodes,rootNode,rmax)
+      !call print_tree(nodes,x,0,1)
+      !call interact(nodes(1),nodes(1),nodes,x,m,poten, nopart)
+      call get_accel(x,a,m,nopart)
+      !STOP
       call write_output(x,v,a,m,nopart,t)
       !STOP
        open(unit=66,file="Momentum",status="replace")
@@ -82,14 +82,14 @@ program nbody
       do while(t < tmax)
             iter  = iter + 1
 
-            call step(x,v,a,m,dt,nopart,nodes)
+            call step(x,v,a,m,dt,nopart)
 
             t = t + dt
             write(*,*) t
 
             if (mod(iter,output_freq) .EQ. 0) then
                   if (t == 10000.OR. t ==11000) then
-                      call print_tree(nodes,x,0,1)
+                      !call print_tree(nodes,x,0,1)
                   !    stop
                   endif
                   call write_output(x,v,a,m,nopart,t)

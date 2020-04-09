@@ -12,7 +12,8 @@ module potendirect
   real :: dx(3), r, r2
   real :: h 
 
-  h = 50.0
+  ! From Figure 2
+  h = 0.1
 
   a = 0.0
  	do i=1, np
