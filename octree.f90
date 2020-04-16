@@ -417,15 +417,18 @@ module octree
       write(*,*) x(:,nodes(currentnode) % data(i))
     endif 
   enddo 
+
+  print*, "Body Children: "
+  do j=1, 2000
+        if (nodes(currentnode) % bodychildren(j) /= 0) then
+
+          write(*,*) nodes(currentnode) % bodychildren(j)
+        endif 
+      enddo 
   do i=1, 8
     if (nodes(currentnode) % children(i) .NE. 0) then
       newdepth = depth + 1
-      print*, "Body Children: "
-      do j=1, 2000
-        if (nodes(currentnode) % bodychildren(j) /= 0) then
-          write(*,*) nodes(currentnode) % bodychildren
-        endif 
-      enddo 
+      
       call print_tree(nodes,x,newdepth,nodes(currentnode) % children(i))
     endif
   enddo 

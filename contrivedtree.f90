@@ -1,7 +1,7 @@
 module contrivedtree
  
  use octreetype
- use octree, only : gen_octant, print_tree 
+ use octree, only : gen_octant, print_tree, insert_bodychild 
  implicit none 
 
  integer :: maxnodes = 3
@@ -78,6 +78,7 @@ module contrivedtree
 
     ! insert particle in tree
     currentnode = 1
+    call insert_bodychild(nodes(1),i)
     call insert_particle(nodes,x,v,a,currentnode,i,endnode)
     write(*,*) " Insert finished"
     !call print_tree(nodes,x,0,1)

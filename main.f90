@@ -12,7 +12,7 @@ program nbody
       use interaction
       implicit none 
       type(octreenode), allocatable :: nodes(:)
-      integer, parameter :: nopart = 2000
+      integer, parameter :: nopart = 20
       real :: x(3, nopart)
       real :: v(3, nopart)
       real :: a(3, nopart)
@@ -58,8 +58,8 @@ program nbody
       call init(x,v,m,nopart)
       !call write_output(x,v,a,m,nopart,t)
       !STOP
-      !call maketreecontrived(nodes,x,v,a,nopart)
-      call maketree(nodes,x,v,a,nopart)
+      call maketreecontrived(nodes,x,v,a,nopart)
+      !call maketree(nodes,x,v,a,nopart)
       call print_tree(nodes,x,0,1)
       STOP 
       call get_com(x,v,m,nopart,nodes,rootNode,sumMass,cm)
