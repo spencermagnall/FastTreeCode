@@ -172,7 +172,7 @@ module octree
    integer :: olddata(10)
    integer :: i, octant
    ! index of the child node 
-   integer :: child
+   integer :: child, bodychildindex
    real :: origin(3), size 
 
    origin =0.0
@@ -180,6 +180,7 @@ module octree
    olddata = 0
    octant =0
    child = 0
+   bodychildindex = 0
 
    write(*,*) "CurrentNode is: ", currentnode
     write(*,*) "endnode is: ", endnode
@@ -216,6 +217,8 @@ module octree
       ! no longer a leaf node 
       nodes(currentnode)% isLeaf = .FALSE.
 
+      ! Add particle to body children
+      call insert_bodychild(nodes(currentnode),currentparticle)
       
       do i = 1, 8
         ! gen new octants 
@@ -307,6 +310,10 @@ module octree
       write(*,*) "Octant:", octant
       child = nodes(currentnode) % children(octant)
       write(*,*) "CHild: ", child
+
+      ! Add particle to body children
+      call insert_bodychild(nodes(currentnode),currentparticle)
+      
       call insert_particle(nodes,x,v,a,child,currentparticle,endnode) 
     end if    
 
@@ -396,7 +403,7 @@ module octree
   type(octreenode), allocatable, intent(in) :: nodes(:)
   real, intent(in) :: x(:,:)
   integer, intent(in) :: depth, currentnode
-  integer :: i, newdepth
+  integer :: i, newdepth,j
 
   write(*,*) "Depth: ", depth
   write(*,*) "Isleaf: ",nodes(currentnode) % isLeaf 
@@ -413,6 +420,12 @@ module octree
   do i=1, 8
     if (nodes(currentnode) % children(i) .NE. 0) then
       newdepth = depth + 1
+      print*, "Body Children: "
+      do j=1, 2000
+        if (nodes(currentnode) % bodychildren(j) /= 0) then
+          write(*,*) nodes(currentnode) % bodychildren
+        endif 
+      enddo 
       call print_tree(nodes,x,newdepth,nodes(currentnode) % children(i))
     endif
   enddo 
@@ -430,6 +443,20 @@ subroutine cleartree(nodes)
   enddo 
 
 end subroutine cleartree
+
+subroutine insert_bodychild(currentnode,currentparticle)
+  type(octreenode), intent(inout) :: currentnode
+  integer, intent(in) :: currentparticle
+  integer  :: bodychildindex
+
+  ! INSERT 
+  currentnode % bodychildpont = currentnode % bodychildpont + 1
+  bodychildindex = currentnode % bodychildpont 
+  currentnode % bodychildren(bodychildindex) = currentparticle 
+
+
+
+end subroutine insert_bodychild
 
 end module octree
   

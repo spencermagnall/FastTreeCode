@@ -39,6 +39,13 @@ module octreetype
     ! taylor series coeff for the node 
     real :: fnode(20)
 
+    ! Body children for the node
+    ! I've just set this to a large value for now 
+    ! But may need to do some dynamic array allocation
+    integer :: bodychildren(2000)
+    ! points to the index of the last inserted body child
+    integer :: bodychildpont
+
     end type
     contains
     subroutine new_node(this,size,origin)
@@ -46,6 +53,8 @@ module octreetype
      real, intent(in) :: size, origin(3)
      this % isleaf = .TRUE.
      this % children(:) = 0
+     this % bodychildren(:) = 0
+     this % bodychildpont = 0
      this % size = size
      write(*,*) "Size set as: ", size
      this % origin = origin
@@ -57,6 +66,8 @@ module octreetype
     this % isleaf = .FALSE. 
     this % children(:) = 0
     this % data(:) = 0
+    this % bodychildren(:) = 0
+    this % bodychildpont = 0
     this % size = 0.0
     this % totalmass = 0.0
     end subroutine null_node
@@ -69,8 +80,16 @@ module octreetype
     subroutine insert_data(this,data)
      type(octreenode), intent(out) :: this
      integer, intent(in) :: data
-     integer :: i
+     integer :: i,bodyindex
 
+     ! insert into body children as well
+     ! This simplfiies the process of spliting a leaf node
+     this % bodychildpont = this % bodychildpont + 1
+     bodyindex = this % bodychildpont
+     this % bodychildren(bodyindex) = data
+
+
+     ! Find an empty space for data
      do i=1, 10
       if (this % data(i) .EQ. 0) then 
        this % data(i) = data 
