@@ -5,7 +5,7 @@ module octree
  ! the opening criterion 
  real, public :: theta = 0.5
 
- integer:: maxnodes = 10000000
+ integer:: maxnodes = 10000
  integer :: totalnodes  = 0
 
  public :: maketree

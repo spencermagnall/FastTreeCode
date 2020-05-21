@@ -90,4 +90,85 @@ pure subroutine compute_fnode(dx,dy,dz,dr,totmass,quads,fnode)
 
 end subroutine compute_fnode
 
+subroutine compute_coeff(dx,dy,dz,dr,totmass,quads)
+ real, intent(in) :: dx,dy,dz,dr,totmass
+ real, intent(in) :: quads(6)
+ !real, intent(inout) :: coeff(4)
+ real :: c0,c1(3),c2(3,3),c3(3,3,3)
+ real :: d0,d1,d1x,d1y,d1z,d2x,d2y,d2z,d3x,d3y,d3z
+ real :: d2,d3
+ real :: r
+ real :: d1arry(3)
+ real :: rarry(3)
+ integer :: i, j, k
+
+
+ r = sqrt(dx**2 + dy**2 + dz**2)
+
+ rarry = (/dx,dy,dz/)
+
+ ! Note dr = 1/r
+ d0 = dr
+ d1 = -dr**3
+ d2 = 2.*(dr**5)
+ d3 = -6. *(dr**7)
+ d1x = -(1./dx)*(1./dx**2)
+ d1y = -(1./dy)*(1./dy**2)
+ d1z = -(1./dz)*(1./dz**2)
+ ! C0 = totmass * Greens function
+ ! scalar 
+ c0 = totmass * dr
+ 
+ ! C1 = MB*Ri*D1
+ ! Should be a vector
+ do i=1, 3
+    c1(i) = totmass*rarry(i)*d1
+ enddo 
+
+ ! C2 = MB kronecker ij D1 + MB Ri Rj D2
+ ! rank 2 tensor 
+ do i=1,3
+    do j=1,3
+       c2(i,j) = totmass*delta(i,j)*d1 + totmass*rarry(i)*rarry(j)*d2
+    enddo 
+ enddo 
+
+
+ ! C3
+ ! rank3 tensor
+ do i=1,3
+    do j=1,3
+       do k=1,3
+          c3(i,j,k) = totmass*(delta(i,j)*rarry(k) + delta(j,k)*rarry(i) + delta(k,i)*rarry(j))*d2 &
+          + totmass*rarry(i)*rarry(j)*rarry(k)*d3
+       enddo 
+    enddo
+ enddo 
+
+ print*, "Coeff 0:"
+ print*, c0
+
+ print*, "Coeff 1:"
+ print*, c1
+
+ print*, "Coeff 2:"
+ print*, c2
+
+ print*, "Coeff 3:"
+ print*, c3 
+
+
+end subroutine compute_coeff
+
+real function delta(i,j)
+ integer, intent(in) :: i, j
+ 
+ if (i == j) then
+    delta = 1.
+ else 
+    delta = 0.
+ endif 
+
+end function delta
+
 end module taylor_expansions

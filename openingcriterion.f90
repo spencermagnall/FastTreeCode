@@ -9,7 +9,7 @@ module opening_criterion
   real :: theta,rmax1,rmax2
   !logical :: bool
 
-  theta = 0.5
+  theta = 1.
 
   cm1 = node1 % centerofmass
   cm2 = node2 % centerofmass
@@ -23,7 +23,8 @@ module opening_criterion
   rmax2 = node2 % rmax 
 
 
-  !
+  print*,"Zmag: ", zmag
+  print*, "rmax1 + rmax2/theta: ", (rmax1 + rmax2)/theta
   if (zmag > (rmax1+rmax2)/theta) then
     bool = .TRUE.
   else 

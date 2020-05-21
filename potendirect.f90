@@ -40,6 +40,9 @@ subroutine get_poten (x,poten,m,np,particlesindex1,particlesindex2)
   integer :: i, j
   integer :: indexi,indexj
 
+  print*, "Working"
+  !print*, x(:,:)
+
   h = 50.0
   ! in this case we don't want to reset a
   do i=1, 10
@@ -47,6 +50,7 @@ subroutine get_poten (x,poten,m,np,particlesindex1,particlesindex2)
    do j=1, 10
     indexj = particlesindex2(j)
     if (j/=i .AND. i /= 0 .AND. j /= 0) then
+     print*, indexi, indexj
      dx = x(:,indexi) - x(:,indexj)
      r2 = dot_product(dx,dx)
      r  = sqrt(r2)

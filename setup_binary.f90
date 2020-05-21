@@ -106,7 +106,8 @@ end subroutine init_pointmass
   start = end + 1 
   end = np/2  
   v(2,start:np) = -q*v(2,1:end)
-     
+  
+
 
  end subroutine init
 

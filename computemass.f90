@@ -13,7 +13,7 @@ RECURSIVE subroutine get_com(x,v,m,np,nodes,currentnode,sumMass,cm)
  real, intent(out) :: sumMass, cm(3)
  real :: massChild(8), cmChild(3,8)
  
-
+ !print*, "Mass: ", m
  write(*, *) "CurrentNode: ", currentnode
  ! BASE CASE 
  ! If we have a leaf node 
@@ -36,7 +36,7 @@ RECURSIVE subroutine get_com(x,v,m,np,nodes,currentnode,sumMass,cm)
 
    ! set the Total Mass for the node
    nodes(currentnode)%totalmass = sumMass 
-
+   print*, "Total mass: ", sumMass
 
   ! Center of Mass is the center of Mass of all the data points 
   ! Weighted sum
@@ -58,6 +58,7 @@ RECURSIVE subroutine get_com(x,v,m,np,nodes,currentnode,sumMass,cm)
 
 
  else
+  print*,"Else condition"
   ! For all children
 
    do i=1, 8
@@ -87,9 +88,14 @@ RECURSIVE subroutine get_com(x,v,m,np,nodes,currentnode,sumMass,cm)
    nodes(currentnode) % totalmass = sumMass
    nodes(currentnode) % centerofmass = cm 
 
+   print*, "Center of mass: ",cm
+   print*, "Total mass: ", sumMass
+
    return   
 
+
  endif 
+
 
 
 end subroutine get_com

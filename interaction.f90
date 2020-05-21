@@ -43,6 +43,8 @@ module interaction
        endif  
      enddo 
     ! CALL DIRECT SUM 
+    print*,"Direct sum"
+    print*, x
     call get_poten(x,poten,m,np,particleindex,particleindex)
    
    ! CELL SELF INTERACTION IS SPLIT INTO MI BETWEEN SUBNODES
@@ -113,6 +115,7 @@ module interaction
     !totmass = 1.0
 
     call compute_fnode(dx,dy,dz,dr,totmass,quads,fnode)
+    call compute_coeff(dx,dy,dz,dr,totmass,quads)
 
     ! store coeff for walk phase 
     node1 % fnode = node1 % fnode + fnode
@@ -138,31 +141,40 @@ module interaction
     do i=1,8
       nodeindex1 = splitnode % children(i)
       newnode1 = nodes(nodeindex1)
+      print*, "Internal splitnode case"
       call interact(regnode,newnode1,nodes,x,m,poten,nopart)
     enddo
 
     ! LEAF-NODE NODE 
     elseif(splitnode % isLeaf .AND. .NOT. regnode % isLeaf) then
+      print*, "FIX THIS"
 
       ! Call poten function
       ! Need a way to get all of the children of a node for direct sum
 
     ! LEAF-NODE LEAF-NODE
     else 
+      print*, "Leafnode-Leafnode"
 
       ! This is direct sum as before 
 
        !Get index of all bodies 
      do i=1, 10
+      print*, i
        if (node1 % data(i) /= 0) then
+         print*, "Crash 1"
          particleindex(i) = node1 % data(i)
+         print*, "particleindex: ", particleindex(i)
        endif
        if (node2 % data(i) /= 0) then
+         print*, "Crash2"
          particleindex2(i) = node2 % data(i)
+         print*, "particleindex2: ", particleindex2(i)
        endif
 
      enddo
 
+     print*, "Finished getting bodies"
      ! CALL DIRECT SUM 
     call get_poten(x,poten,m,np,particleindex,particleindex2)
 

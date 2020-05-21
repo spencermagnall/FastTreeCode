@@ -1,8 +1,8 @@
 program nbody
-      !use octree
+      use octree
       use contrivedtree
-      !use setup_binary
-      use plummer_dist
+      use setup_binary
+      !use plummer_dist
       use step_leapfrog
       use output
       !use poten
@@ -56,19 +56,21 @@ program nbody
       cm = 0.0
       ! PUT PARTICLE SETUP HERE
       call init(x,v,m,nopart)
+      print*, "Finished setup!"
       !call write_output(x,v,a,m,nopart,t)
       !STOP
-      call maketreecontrived(nodes,x,v,a,nopart)
-      !call maketree(nodes,x,v,a,nopart)
-      call print_tree(nodes,x,0,1)
-      STOP 
+      !call maketreecontrived(nodes,x,v,a,nopart)
+      call maketree(nodes,x,v,a,nopart)
+      print*, "Finished tree build!"
+      !call print_tree(nodes,x,0,1)
+      !STOP 
       call get_com(x,v,m,nopart,nodes,rootNode,sumMass,cm)
       ! Find rmax for each node
       rootNode = 1
       rmax = 0.0
       call find_rmax(x,nodes,rootNode,rmax)
       call print_tree(nodes,x,0,1)
-      !call interact(nodes(1),nodes(1),nodes,x,m,poten, nopart)
+      call interact(nodes(1),nodes(1),nodes,x,m,poten, nopart)
       STOP
       call get_accel(x,a,m,nopart)
       !STOP
