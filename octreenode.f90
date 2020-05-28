@@ -39,6 +39,19 @@ module octreetype
     ! taylor series coeff for the node 
     real :: fnode(20)
 
+    ! Coeff 0, i.e potential
+    real :: c0
+
+    ! Coeff 1, i.e accel, a vector 
+    real :: c1(3)
+
+    ! Coeff 2, rank2 tensor
+    real :: c2(3,3)
+
+    ! Coeff 3, rank3 tensor
+    real :: c3(3,3,3)
+
+
     ! Body children for the node
     ! I've just set this to a large value for now 
     ! But may need to do some dynamic array allocation
@@ -56,6 +69,10 @@ module octreetype
      this % bodychildren(:) = 0
      this % bodychildpont = 0
      this % size = size
+     this % c0 = 0
+     this % c1 = 0
+     this % c2 = 0 
+     this % c3 = 0
      write(*,*) "Size set as: ", size
      this % origin = origin
     end subroutine new_node
@@ -70,6 +87,10 @@ module octreetype
     this % bodychildpont = 0
     this % size = 0.0
     this % totalmass = 0.0
+    this % c0 = 0
+    this % c1 = 0
+    this % c2 = 0 
+    this % c3 = 0
     end subroutine null_node
 
     logical function node_full(this) result(flag)

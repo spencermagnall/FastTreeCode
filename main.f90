@@ -10,6 +10,7 @@ program nbody
       use computemass
       use opening_criterion
       use interaction
+      use testgravity
       implicit none 
       type(octreenode), allocatable :: nodes(:)
       integer, parameter :: nopart = 20
@@ -26,7 +27,10 @@ program nbody
       real :: angmom(3),rmax
       integer :: rootnode
       real:: sumMass, cm(3)
-      
+     
+
+      call test_gravity()
+      STOP
       !x(:,1) = (/2.0,2.0,2.0/)
       !x(:,2) = (/1,1,1/)
       !x(:,3) = (/3.0,3.0,3.0/)

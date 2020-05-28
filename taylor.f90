@@ -90,11 +90,11 @@ pure subroutine compute_fnode(dx,dy,dz,dr,totmass,quads,fnode)
 
 end subroutine compute_fnode
 
-subroutine compute_coeff(dx,dy,dz,dr,totmass,quads)
+subroutine compute_coeff(dx,dy,dz,dr,totmass,quads,c0,c1,c2,c3)
  real, intent(in) :: dx,dy,dz,dr,totmass
  real, intent(in) :: quads(6)
  !real, intent(inout) :: coeff(4)
- real :: c0,c1(3),c2(3,3),c3(3,3,3)
+ real, intent(inout) :: c0,c1(3),c2(3,3),c3(3,3,3)
  real :: d0,d1,d1x,d1y,d1z,d2x,d2y,d2z,d3x,d3y,d3z
  real :: d2,d3
  real :: r
@@ -117,29 +117,29 @@ subroutine compute_coeff(dx,dy,dz,dr,totmass,quads)
  d1z = -(1./dz)*(1./dz**2)
  ! C0 = totmass * Greens function
  ! scalar 
- c0 = totmass * dr
+ c0 = c0 + totmass * dr
  
  ! C1 = MB*Ri*D1
  ! Should be a vector
  do i=1, 3
-    c1(i) = totmass*rarry(i)*d1
+    c1(i) = c1(i) + totmass*rarry(i)*d1
  enddo 
 
  ! C2 = MB kronecker ij D1 + MB Ri Rj D2
  ! rank 2 tensor 
- do i=1,3
-    do j=1,3
-       c2(i,j) = totmass*delta(i,j)*d1 + totmass*rarry(i)*rarry(j)*d2
+ do j=1,3
+    do i=1,3
+       c2(i,j) = c2(i,j) + totmass*delta(i,j)*d1 + totmass*rarry(i)*rarry(j)*d2
     enddo 
  enddo 
 
 
  ! C3
  ! rank3 tensor
- do i=1,3
+ do k=1,3
     do j=1,3
-       do k=1,3
-          c3(i,j,k) = totmass*(delta(i,j)*rarry(k) + delta(j,k)*rarry(i) + delta(k,i)*rarry(j))*d2 &
+       do i=1,3
+          c3(i,j,k) =  c3(i,j,k) +  totmass*(delta(i,j)*rarry(k) + delta(j,k)*rarry(i) + delta(k,i)*rarry(j))*d2 &
           + totmass*rarry(i)*rarry(j)*rarry(k)*d3
        enddo 
     enddo

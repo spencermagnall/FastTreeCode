@@ -2,7 +2,9 @@ module interaction
  use octree
  use opening_criterion
  use taylor_expansions
- use potendirect  
+ use potendirect 
+ ! This is just for testing remove later
+ use evaluate  
 
  contains 
 
@@ -17,6 +19,7 @@ module interaction
   real :: fnode(20),quads(6)
   real :: dr,dx,dy,dz,totmass
   integer :: particleindex(10),particleindex2(10) 
+  real :: c0,c1(3),c2(3,3),c3(3,3,3)
 
   logical :: nodesAreEqual
   
@@ -115,13 +118,15 @@ module interaction
     !totmass = 1.0
 
     call compute_fnode(dx,dy,dz,dr,totmass,quads,fnode)
-    call compute_coeff(dx,dy,dz,dr,totmass,quads)
+    call compute_coeff(dx,dy,dz,dr,totmass,quads,c0,c1,c2,c3)
 
     ! store coeff for walk phase 
     node1 % fnode = node1 % fnode + fnode
 
     ! print poten
     print*, "Poten is: ", fnode(20)
+    call poten_at_bodypos(cm1,cm2,c0,c1,c2,c3,poten(20))
+    print*, "Poten is: ", poten(20)
 
 
   ! THE NODE WITH THE LARGER RMAX IS SPLIT; up to 8 new MI are created and processed 
