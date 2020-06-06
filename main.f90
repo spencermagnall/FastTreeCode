@@ -10,10 +10,11 @@ program nbody
       use computemass
       use opening_criterion
       use interaction
+      use evaluate
       use testgravity
       implicit none 
       type(octreenode), allocatable :: nodes(:)
-      integer, parameter :: nopart = 20
+      integer, parameter :: nopart = 10
       real :: x(3, nopart)
       real :: v(3, nopart)
       real :: a(3, nopart)
@@ -25,12 +26,17 @@ program nbody
       real :: p(3)
       real:: pmag, pmagold, deltap 
       real :: angmom(3),rmax
-      integer :: rootnode
-      real:: sumMass, cm(3)
-     
+      integer :: rootnode,i
+      real :: sumMass, cm(3)
+      real :: c0,c1(3),c2(3,3),c3(3,3,3)
+      
+      c0 = 0.
+      c1 = 0.
+      c2 = 0.
+      c3 = 0.
 
-      call test_gravity()
-      STOP
+      !call test_gravity()
+      !STOP
       !x(:,1) = (/2.0,2.0,2.0/)
       !x(:,2) = (/1,1,1/)
       !x(:,3) = (/3.0,3.0,3.0/)
@@ -51,13 +57,14 @@ program nbody
 
       !STOP
       t = 0
-      dt = 0.00001
+      dt = 1000
       iter = 0 
-      tmax = 5
+      tmax = 500000
       output_freq = 100 
       rootNode = 1
       sumMass = 0.0
       cm = 0.0
+      a = 0.
       ! PUT PARTICLE SETUP HERE
       call init(x,v,m,nopart)
       print*, "Finished setup!"
@@ -72,11 +79,27 @@ program nbody
       ! Find rmax for each node
       rootNode = 1
       rmax = 0.0
+      cm = 0.
       call find_rmax(x,nodes,rootNode,rmax)
       call print_tree(nodes,x,0,1)
-      call interact(nodes(1),nodes(1),nodes,x,m,poten, nopart)
+      !STOP
+      a = 0.
+      call interact(nodes(1),nodes(1),nodes,x,m,a, nopart)
+      !print*,nodes(1) % c3
+      print*, "Accel:"
+      print*, a
       STOP
-      call get_accel(x,a,m,nopart)
+      c0 = 0.
+      c1 = 0.
+      c2 = 0.
+      c3 = 0.
+      call evaluate_gravity(nodes(1),nodes,cm,c0,c1,c2,c3,x,a)
+      print*,"Accel: "
+      do i=1, nopart
+        print*, a(:,i)
+      enddo 
+      STOP
+      !call get_accel(x,a,m,nopart)
       !STOP
       call write_output(x,v,a,m,nopart,t)
       !STOP
@@ -90,7 +113,7 @@ program nbody
       do while(t < tmax)
             iter  = iter + 1
 
-            call step(x,v,a,m,dt,nopart)
+            call step(x,v,a,m,dt,nopart,nodes)
 
             t = t + dt
             write(*,*) t

@@ -3,19 +3,33 @@ module evaluate
  implicit none 
  contains
 
- recursive subroutine evaluate_gravity(node,nodes,z0,c0,c1,c2,c3,x,poten)
+ recursive subroutine evaluate_gravity(node,nodes,z0,c0,c1,c2,c3,x,accel)
   type(octreenode), intent(inout) :: node, nodes(:)
-  real,intent(inout) :: c0,c1(3),c2(3,3),c3(3,3,3),z0(3),x(:,:),poten(:,:)
+  real,intent(inout) :: c0,c1(3),c2(3,3),c3(3,3,3),z0(3),x(:,:),accel(:,:)
   type(octreenode) :: childnode
-  real :: z1(3),xbod(3),bodpot
+  real :: z1(3),xbod(3),bodpot,bodaccel(3)
   integer :: i,nochild,bodyindex
   !real :: c0old,c1old(3),c2old(3,3),c3old(3,3,3)
+
+  bodpot = 0.
+  bodaccel = 0.
 
   ! TAYLOR SERIES OF CELL A
   ! TA 
 
+  !print*, nodes(1) % c0
+  !print*, "c0 before"
+  !print*,c0
+  !print*,"c1 before"
+  !print*,c1
+  !print*,"c2 before"
+  !print*,c2
+  !print*,"c3 before"
+  !print*, c3
   ! Get CoM of current node
    z1 = node % centerofmass
+   print*, "Center of Mass: "
+   print*, z1
 
   ! TRANSLATE TAYLOR SERIES T0 TO CENTER OF MASS OF A
   call translate_expansion_center(z0,z1,c0,c1,c2,c3)
@@ -23,14 +37,27 @@ module evaluate
   ! TA += T0
   ! Sum up the field tensors in a taylor series to get poten
   ! Accumulate field tensors 
-  !node % c0 = node % c0 + c0
-  !node % c1 = node % c1 + c1
-  !node % c2 = node % c2 + c2
-  !node % c3 = node % c3 + c3
+  c0 = node % c0 + c0
+  !print*, "C0: "
+  !print*,c0
+  c1 = node % c1 + c1
+  !print*, "C1: "
+  !print*,c1
+  c2 = node % c2 + c2
+  !print*, "C2: "
+  !print*,c2
+  c3 = node % c3 + c3
+  !print*, "C3: "
+  !print*, c3
   ! FOR BODY CHILDREN OF A 
+
+ !STOP
 
   nochild = size(node % bodychildren)
   do i=1, nochild
+    if (node%bodychildren(i)==0) then
+      EXIT
+    endif 
     ! Get the index of the body 
     bodyindex = node % bodychildren(i)
     xbod = x(:,bodyindex)
@@ -38,21 +65,26 @@ module evaluate
 
 
    ! Evaluate TA at body's position
-   call poten_at_bodypos(xbod,z1,c0,c1,c2,c3,bodpot)
+   !call poten_at_bodypos(xbod,z1,c0,c1,c2,c3,bodpot)
+   call accel_at_bodypos(xbod,z1,c0,c1,c2,c3,bodaccel)
 
    ! add to body's potential and acceleration
 
-   poten(:,bodyindex) = poten(:,bodyindex) + bodpot
+   !poten(bodyindex) = poten(bodyindex) + bodpot
+   accel(:,bodyindex) = accel(:,bodyindex) + bodaccel
+   print*, "accel:"
+   print*, accel(:,bodyindex)
 
   enddo 
 
   ! FOR CHILDREN OF A 
-
+  ! change center of mass
+  z0 = z1
   do i=1, 8
 
    if (node % children(i) /= 0) then  
     childnode = nodes(node % children(i))
-    call evaluate_gravity(childnode,nodes,z0,c0,c1,c2,c3,x,poten)
+    call evaluate_gravity(childnode,nodes,z0,c0,c1,c2,c3,x,accel)
    endif 
 
   enddo  
@@ -70,6 +102,14 @@ module evaluate
   c1old = c1
   c2old = c2
   c3old = c3
+  !print*, "c0"
+  !print*, c0old
+  !print*, "c1"
+  !print*, c1old
+  !print*, "c2"
+  !print*, c2old
+  !print*, "c3"
+  !print*, c3old(2,1,1)
 
   sep1 = z0-z1
   call outer_product1(sep1,sep1,sep2)
@@ -83,6 +123,24 @@ module evaluate
 
  end subroutine translate_expansion_center
 
+ subroutine accel_at_bodypos(x,com,c0,c1,c2,c3,accel)
+  real, intent(inout) :: accel(3)
+  real, intent(in) :: x(3),com(3)
+  real, intent(in) :: c0,c1(3),c2(3,3),c3(3,3,3)
+  real :: sep1(3), sep2(3,3), sep3(3,3,3)
+
+  ! The N-fold outer products of the seperation
+  sep1 = x - com
+
+  ! Replace outer product by matrix mul
+  !sep2 = matmul(RESHAPE(sep1,(/3,1/)), RESHAPE(sep1,(/1,3/)))
+  call outer_product1(sep1,sep1,sep2)
+
+  accel = accel  + c1 &
+  + inner_product2_to_vec(sep1,c2) !&
+  !+ 0.5*inner_product23_to_vec(sep2,c3)
+
+ end subroutine accel_at_bodypos
  subroutine poten_at_bodypos(x,com,c0,c1,c2,c3,poten)
   real, intent(inout) :: poten
   real, intent(in) :: x(3),com(3)
@@ -90,11 +148,11 @@ module evaluate
   real :: sep1(3), sep2(3,3), sep3(3,3,3)
 
   ! The N-fold outer products of the seperation
-  sep1 = x-com
+  sep1 = x - com
 
   ! Replace outer product by matrix mul
-  sep2 = matmul(RESHAPE(sep1,(/3,1/)), RESHAPE(sep1,(/1,3/)))
-  !call outer_product1(sep1,sep1,sep2)
+  !sep2 = matmul(RESHAPE(sep1,(/3,1/)), RESHAPE(sep1,(/1,3/)))
+  call outer_product1(sep1,sep1,sep2)
   call outer_product2(sep2,sep1,sep3)
   !print(matmul(RESHAPE(sep1,(/3,1/)),sep2))
 
@@ -170,9 +228,11 @@ module evaluate
 
   do j=1,3
     do i=1,3
-      thevector(i) = thevector(i) + vec(i)*tens(i,j)
+      thevector(j) = thevector(j) + vec(i)*tens(i,j)
     enddo 
   enddo 
+  !print*,"The vector: "
+  !print*, thevector
 
 
  end function inner_product2_to_vec
@@ -187,7 +247,7 @@ module evaluate
   do k=1,3
     do j=1,3
       do i=1,3 
-        thevector(i) = thevector(i) + tens1(i,j)*tens2(i,j,k)
+        thevector(k) = thevector(k) + tens1(i,j)*tens2(i,j,k)
       enddo
     enddo 
   enddo 
@@ -205,7 +265,7 @@ module evaluate
   do k=1,3
     do j=1,3
       do i=1,3
-        thetens(i,j) = thetens(i,j) + tens2(i,j,k)*tens1(k)
+        thetens(j,k) = thetens(j,k) + tens2(j,k,i)*tens1(i)
 
       enddo 
     enddo 
@@ -228,7 +288,7 @@ module evaluate
 !   fxi,fyi,fzi : gravitational force at the new position
 !+
 !----------------------------------------------------------------
-pure subroutine expand_fgrav_in_taylor_series(fnode,dx,dy,dz,fxi,fyi,fzi,poti)
+subroutine expand_fgrav_in_taylor_series(fnode,dx,dy,dz,fxi,fyi,fzi,poti)
  real, intent(in)  :: fnode(20)
  real, intent(in)  :: dx,dy,dz
  real, intent(out) :: fxi,fyi,fzi,poti
@@ -238,6 +298,8 @@ pure subroutine expand_fgrav_in_taylor_series(fnode,dx,dy,dz,fxi,fyi,fzi,poti)
  fxi = fnode(1)
  fyi = fnode(2)
  fzi = fnode(3)
+ print*, "Correct components: "
+ print*, fnode(4),fnode(5),fnode(6),fnode(7),fnode(8),fnode(9)
  dfxx = fnode(4)
  dfxy = fnode(5)
  dfxz = fnode(6)
@@ -256,17 +318,19 @@ pure subroutine expand_fgrav_in_taylor_series(fnode,dx,dy,dz,fxi,fyi,fzi,poti)
  d2fzzz = fnode(19)
  poti = fnode(20)
 
- fxi = fxi + dx*(dfxx + 0.5*(dx*d2fxxx + dy*d2fxxy + dz*d2fxxz)) &
-           + dy*(dfxy + 0.5*(dx*d2fxxy + dy*d2fxyy + dz*d2fxyz)) &
-           + dz*(dfxz + 0.5*(dx*d2fxxz + dy*d2fxyz + dz*d2fxzz))
- fyi = fyi + dx*(dfxy + 0.5*(dx*d2fxxy + dy*d2fxyy + dz*d2fxyz)) &
-           + dy*(dfyy + 0.5*(dx*d2fxyy + dy*d2fyyy + dz*d2fyyz)) &
-           + dz*(dfyz + 0.5*(dx*d2fxyz + dy*d2fyyz + dz*d2fyzz))
- fzi = fzi + dx*(dfxz + 0.5*(dx*d2fxxz + dy*d2fxyz + dz*d2fxzz)) &
-           + dy*(dfyz + 0.5*(dx*d2fxyz + dy*d2fyyz + dz*d2fyzz)) &
-           + dz*(dfzz + 0.5*(dx*d2fxzz + dy*d2fyzz + dz*d2fzzz))
+ fxi = fxi + dx*dfxx & 
+           + dy*dfxy & 
+           + dz*dfxz  
+ fyi = fyi + dx*dfxy & 
+           + dy*dfyy & 
+           + dz*dfyz 
+ fzi = fzi + dx*dfxz & 
+           + dy*dfyz & 
+           + dz*dfzz  
  poti = poti - (dx*fxi + dy*fyi + dz*fzi)
 
+  !print*, "The vector 2"
+  !print*, fxi,fyi,fzi
  return
 end subroutine expand_fgrav_in_taylor_series
  

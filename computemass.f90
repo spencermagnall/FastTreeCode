@@ -51,7 +51,13 @@ RECURSIVE subroutine get_com(x,v,m,np,nodes,currentnode,sumMass,cm)
 
   enddo
   ! Store Center of Mass
-  cm = cm/(nodes(currentnode)%totalmass)
+  ! This is a singularity if the totalmass
+  ! of the node is 0
+  if (nodes(currentnode)%totalmass > 0.) then
+    cm = cm/(nodes(currentnode)%totalmass)
+  else 
+    cm = 0.
+  endif 
   nodes(currentnode) % centerofmass = cm 
 
   return  ! Return sumMass and cm 

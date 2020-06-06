@@ -9,13 +9,14 @@ module opening_criterion
   real :: theta,rmax1,rmax2
   !logical :: bool
 
-  theta = 1.
+  theta = 0.3
 
   cm1 = node1 % centerofmass
   cm2 = node2 % centerofmass
 
   ! Get the magnitude of the difference between CoM's
   dx = cm1 - cm2
+  print*,dx
   zmag = norm2(dx)
 
   ! get the rmax for nodes 1 and 2

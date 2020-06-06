@@ -8,15 +8,18 @@ contains
   real  :: xposi(3),xposj(3),x0(3)
   real :: dx(3),dr,quads(6),totmass
   real :: poten, phiexact
-  real :: f0(3),fnode(20)
+  real :: f0(3),fnode(20),fexact(3),accel(3)
   real :: startdan, stopdan,startwal,stopwal
 
+  dx = 0.
+  dr = 0.
   c0 = 0.
   c1 = 0.
   c2 = 0.0
   c3 = 0.0
 
   poten = 0.
+  accel = 0.
 
   quads = 0.
 
@@ -34,11 +37,14 @@ contains
   call get_dx_dr(xposi,xposj,dx,dr)
 
   phiexact = -totmass*dr
+  fexact = -(totmass*dr**3)*dx
 
   call get_dx_dr(x0,xposj,dx,dr)
   ! Compute tensor fields
   call compute_coeff(dx(1),dx(2),dx(3),dr,totmass,quads,c0,c1,c2,c3)
-  !print*, c0
+  call compute_fnode(dx(1),dx(2),dx(3),dr,totmass,quads,fnode)
+  print*, "C2 me"
+  print*, c2
   
 
 
@@ -49,9 +55,13 @@ contains
   call poten_at_bodypos(xposi,x0,c0,c1,c2,c3,poten)
   call cpu_time(stopwal)
 
+  call accel_at_bodypos(xposi,x0,c0,c1,c2,c3,accel)
   print*,'Phi exact ', phiexact
+  print*, 'Force exact ', fexact
   print*,'Phi at origin (Walter) = ',-c0
   print*,'Phi with taylor series (Walter) = ', poten
+  print*, c1
+  print*, 'Force (walter) = ', accel
   print*, stopwal - startwal, " Seconds"
 
   poten = 0.
@@ -65,6 +75,7 @@ contains
   call cpu_time(stopdan)
   print*, 'Phi at origin (Daniel) =', fnode(20)
   print*, 'Phi with taylor series (Daniel) =',poten
+  print*, "Force daniel: ", f0
   print*, stopdan - startdan, " Seconds"
 
  end subroutine test_gravity

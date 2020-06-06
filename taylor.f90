@@ -7,7 +7,7 @@ module taylor_expansions
 !  required for the Taylor series expansions.
 !+
 !-----------------------------------------------------------
-pure subroutine compute_fnode(dx,dy,dz,dr,totmass,quads,fnode)
+subroutine compute_fnode(dx,dy,dz,dr,totmass,quads,fnode)
  real, intent(in)    :: dx,dy,dz,dr,totmass
  real, intent(in)    :: quads(6)
  real, intent(inout) :: fnode(20)
@@ -18,11 +18,14 @@ pure subroutine compute_fnode(dx,dy,dz,dr,totmass,quads,fnode)
  real :: d2fxzzq,d2fyyyq,d2fyyzq,d2fyzzq,d2fzzzq
 
  ! note: dr == 1/sqrt(r2)
+ print*, "dr: ", dr
  dr3  = dr*dr*dr
+ print*, dr3
  dr4  = dr*dr3
  dr5  = dr*dr4
  dr6  = dr*dr5
  dr3m  = totmass*dr3
+ print*, "dr3m: ",dr3m
  dr4m3 = 3.*totmass*dr4
  rx  = dx*dr
  ry  = dy*dr
@@ -88,6 +91,9 @@ pure subroutine compute_fnode(dx,dy,dz,dr,totmass,quads,fnode)
  fnode(19) = fnode(19) - dr4m3*(5.*rz*rz*rz - 3.*rz) + d2fzzzq ! d2fzdzdz
  fnode(20) = fnode(20) - totmass*dr - 0.5*rijQij*dr3   ! potential
 
+ print*, "C2 correct"
+ print*, fnode(4:9)
+
 end subroutine compute_fnode
 
 subroutine compute_coeff(dx,dy,dz,dr,totmass,quads,c0,c1,c2,c3)
@@ -100,6 +106,7 @@ subroutine compute_coeff(dx,dy,dz,dr,totmass,quads,c0,c1,c2,c3)
  real :: r
  real :: d1arry(3)
  real :: rarry(3)
+ real :: dr2,dr3,dr4,dr5,dr6
  integer :: i, j, k
 
 
@@ -108,10 +115,20 @@ subroutine compute_coeff(dx,dy,dz,dr,totmass,quads,c0,c1,c2,c3)
  rarry = (/dx,dy,dz/)
 
  ! Note dr = 1/r
+ print*, "dr"
  d0 = dr
- d1 = -dr**3
- d2 = 2.*(dr**5)
- d3 = -6. *(dr**7)
+ dr2 = dr*dr
+ dr3 = dr2*dr
+ dr4 = dr3*dr
+ dr5 = dr4*dr
+ print*, d0
+ d1 = -dr3
+ print*, 'd1'
+ print*, d1*totmass
+ ! Why is this 3 not 2?????
+ d2 = 3.* dr5
+ print*, d2
+ d3 = -6.*(d2*dr*dr)
  d1x = -(1./dx)*(1./dx**2)
  d1y = -(1./dy)*(1./dy**2)
  d1z = -(1./dz)*(1./dz**2)
@@ -121,41 +138,73 @@ subroutine compute_coeff(dx,dy,dz,dr,totmass,quads,c0,c1,c2,c3)
  
  ! C1 = MB*Ri*D1
  ! Should be a vector
- do i=1, 3
-    c1(i) = c1(i) + totmass*rarry(i)*d1
- enddo 
+ !do i=1, 3
+ !   c1(i) = c1(i) + totmass*rarry(i)*d1
+ !enddo
+
+ ! UNROLL LOOPS
+ c1(1) = c1(1) + totmass*rarry(1)*d1
+ c1(2) = c1(2) + totmass*rarry(2)*d1 
+ c1(3) = c1(3) + totmass*rarry(3)*d1
 
  ! C2 = MB kronecker ij D1 + MB Ri Rj D2
  ! rank 2 tensor 
- do j=1,3
-    do i=1,3
-       c2(i,j) = c2(i,j) + totmass*delta(i,j)*d1 + totmass*rarry(i)*rarry(j)*d2
-    enddo 
- enddo 
+ !do j=1,3
+ !  do i=1,3
+ !     c2(i,j) = c2(i,j) + totmass*delta(i,j)*d1 + totmass*rarry(i)*rarry(j)*d2
+ !  enddo 
+ !enddo 
 
+ ! UNROLLLLLL
 
+ c2(1,1) = c2(1,1) + totmass*d1 + totmass*rarry(1)*rarry(1)*d2
+ c2(1,2) = c2(1,2) + totmass*rarry(1)*rarry(2)*d2
+ c2(1,3) = c2(1,3) + totmass*rarry(1)*rarry(3)*d2
+ c2(2,1) = c2(2,1) + totmass*rarry(2)*rarry(1)*d2
+ c2(2,2) = c2(2,2) + totmass*d1 + totmass*rarry(2)*rarry(2)*d2
+ c2(2,3) = c2(2,3) + totmass*rarry(2)*rarry(3)*d2
+ c2(3,1) = c2(3,1) + totmass*rarry(3)*rarry(1)*d2
+ c2(3,2) = c2(3,2) + totmass*rarry(3)*rarry(2)*d2
+ c2(3,3) = c2(3,3) + totmass*d1 + totmass*rarry(3)*rarry(3)*d2
+ 
  ! C3
  ! rank3 tensor
  do k=1,3
     do j=1,3
        do i=1,3
-          c3(i,j,k) =  c3(i,j,k) +  totmass*(delta(i,j)*rarry(k) + delta(j,k)*rarry(i) + delta(k,i)*rarry(j))*d2 &
-          + totmass*rarry(i)*rarry(j)*rarry(k)*d3
-       enddo 
+         c3(i,j,k) =  c3(i,j,k) +  totmass*delta(i,j)*rarry(k)*d2 + totmass*delta(j,k)*rarry(i)*d2 &
+          + totmass * delta(k,i)*rarry(j)*d2 + totmass*rarry(i)*rarry(j)*rarry(k)*d3
+      enddo 
     enddo
  enddo 
 
- print*, "Coeff 0:"
- print*, c0
+ ! UNROLLLLLLLLLLLLLLLLLLL
 
- print*, "Coeff 1:"
- print*, c1
+ !c3(1,1,1) = c3(1,1,1) + totmass*(rarry(1) + rarry(1) + rarry(1))*d2 + totmass*rarry(1)*rarry(1)*rarry(1)*d3
+ !c3(1,1,2) = c3(1,1,2) + totmass*(rarry(2))*d2 + totmass*rarry(1)*rarry(1)*rarry(2)*d3
+ !c3(1,1,3) = c3(1,1,3) + totmass*(rarry(3))*d2 + totmass*rarry(1)*rarry(1)*rarry(3)*d3
+ !c3(1,2,1) = c3(1,2,1) + totmass*(rarry(2))*d2 + totmass*rarry(1)*rarry(2)*rarry(1)*d3
+ !c3(1,2,2) = c3(1,2,2) + totmass*(rarry(1))*d2 + totmass*rarry(1)*rarry(2)*rarry(2)*d3
+ !c3(1,)
 
- print*, "Coeff 2:"
- print*, c2
+ !print*, "Coeff 0:"
+ !print*, c0
 
- print*, "Coeff 3:"
- print*, c3 
+ !print*, "Coeff 1:"
+ !print*, c1
+
+ !print*, "Coeff 2:"
+ !print*, c2
+
+ !print*, "Coeff 3:"
+ !print*, c3 
+
+ !print*, "dr is: "
+ !print*,"Components are: "
+ !print*, totmass*delta(2,1)*rarry(1)*d2
+ !print*, totmass*delta(1,1)*rarry(2)*d2
+ !print*, totmass*delta(1,2)*rarry(1)*d2
+ !print*, dr
 
 
 end subroutine compute_coeff
