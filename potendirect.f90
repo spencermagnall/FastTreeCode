@@ -12,8 +12,9 @@ module potendirect
   real :: r,r2,dx(3), h
   integer :: i, j
   integer :: indexi,indexj,part2size
-  real , allocatable :: particles(:) 
+  integer , allocatable :: particles(:) 
 
+   ! TODO REFACTOR TO JUST TAKE IN ARRAY CONTIAINING PARTICLE INDEXS
   
 
   ! THIS IS BAD 
@@ -25,13 +26,15 @@ module potendirect
 
   allocate(particles(part2size+10))
   particles = [particlesindex1,particlesindex2]
+  print*,"particles: ", particles 
 
-  print*, "Working"
+  !print*, "Direct Sum"
   !print*, x(:,:)
 
+  open(unit=56,file="interactions.txt")
   ! Put all the particles into one list 
 
-  h = 0.
+  h = 5000.
   ! in this case we don't want to reset a
   ! but is should be done at the start of each step
   ! THIS IS WRONG!!
@@ -40,7 +43,8 @@ module potendirect
    do j=1, size(particles)
     indexj = particles(j)
     if (indexj/=indexi .AND. indexi /= 0 .AND. indexj /= 0) then
-     print*, indexi, indexj
+     !print*, "indexi, indexj"
+     !print*, indexi, indexj
      dx = x(:,indexi) - x(:,indexj)
      !print*,"dx: ", dx
      !print*, "r2: ", r2
@@ -48,13 +52,59 @@ module potendirect
      !print*, "abefore: ", a(:,indexi)
      r2 = dot_product(dx,dx)
      r  = sqrt(r2)
-     a(:,indexi) = a(:,indexi) - m(indexj)*dx*(1/((r2 + h**2)**1.5))
+     a(:,indexi) = a(:,indexi) - m(indexj)*(1/((r2 + h**2)**1.5))*dx
      !print*,"Accel direct: ", a(:,indexi)
-     if (isnan(a(2,indexi))) stop 
+     !print*, "A mag: ", sqrt(dot_product(m(indexj)*(1/((r2*r)))*dx, m(indexj)*(1/((r2*r)))*dx))
+     !if (isnan(a(2,indexi))) stop 
+     write(56,*) "Particle1 ",indexi, " Particle2 ",indexj, "Accel: ", m(indexj)*(1/((r2 + h**2)**1.5))*dx
     endif
   enddo
  enddo
+
+
+ 
+
+
 end subroutine get_accel
+
+subroutine get_accel_leafnode(x,a,m,np,particlesindex1,particlesindex2)
+  integer, intent(in) :: np, particlesindex1(:), particlesindex2(:)
+  real, intent(in) :: x(3,np), m(np)
+  real, intent(inout) :: a(3,np)
+  real :: r,r2,dx(3), h
+  integer :: i, j
+  integer :: indexi,indexj
+
+
+  h = 5000.
+  ! in this case we don't want to reset a
+  ! but is should be done at the start of each step
+  ! THIS IS WRONG!!
+  do i=1, size(particlesindex1)
+   indexi = particlesindex1(i)
+   do j=1, size(particlesindex2)
+    indexj = particlesindex2(j)
+    if (indexj/=indexi .AND. indexi /= 0 .AND. indexj /= 0) then
+     !print*, "indexi, indexj"
+     !print*, indexi, indexj
+     dx = x(:,indexi) - x(:,indexj)
+     !print*,"dx: ", dx
+     !print*, "r2: ", r2
+     !print*, "m: ", m(indexj) 
+     !print*, "abefore: ", a(:,indexi)
+     r2 = dot_product(dx,dx)
+     r  = sqrt(r2)
+     a(:,indexi) = a(:,indexi) - m(indexj)*(1/((r2 + h**2)**1.5))*dx
+     !print*,"Accel direct: ", a(:,indexi)
+     !print*, "A mag: ", sqrt(dot_product(m(indexj)*(1/((r2*r)))*dx, m(indexj)*(1/((r2*r)))*dx))
+     !if (isnan(a(2,indexi))) stop 
+     write(56,*) "Particle1 ",indexi, " Particle2 ",indexj, "Accel: ", m(indexj)*(1/((r2 + h**2)**1.5))*dx
+    endif
+  enddo
+ enddo
+
+
+end subroutine get_accel_leafnode
 
 subroutine get_poten (x,poten,m,np,particlesindex1,particlesindex2)
   ! the index's of particles (BODIES)
@@ -111,5 +161,35 @@ subroutine get_poten_node(x,poten,m,np,particlesindex,node)
 enddo 
 
 end subroutine get_poten_node
+
+subroutine get_accel_test(x,a,m,np)
+  integer, intent(in) :: np
+  real, intent(in) :: x(3,np),m(np)
+  real, intent(inout) :: a(3,np)
+  real :: h,dx(3),r2,r
+  integer :: i,j
+
+  h = 5000.
+
+  ! SUBOUTINE FOR TESTING THAT ACCEL IS COMPUTED CORRECTLY 
+  a = 0.
+  do i=1, np
+   do j=1, np
+    if (i/=j) then
+     !print*, indexi, indexj
+     dx = x(:,i) - x(:,j)
+     !print*,"dx: ", dx
+     !print*, "r2: ", r2
+     !print*, "m: ", m(indexj) 
+     !print*, "abefore: ", a(:,indexi)
+     r2 = dot_product(dx,dx)
+     r  = sqrt(r2)
+     a(:,i) = a(:,i) - m(j)*dx*(1/((r2 + h**2)**1.5))
+     !print*,"Accel direct: ", a(:,indexi)
+    endif
+  enddo
+ enddo
+
+end subroutine get_accel_test
 
 end module potendirect

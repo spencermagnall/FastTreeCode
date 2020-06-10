@@ -8,23 +8,26 @@ module interaction
 
  contains 
 
- RECURSIVE subroutine interact(node1,node2,nodes,x,m,a,nopart)
+ RECURSIVE subroutine interact(nodeindex1,nodeindex2,nodes,x,m,a,nopart,interactionlist)
   integer, intent(in) :: nopart 
-  type(octreenode), intent(inout) :: node1, node2, nodes(:)
+  type(octreenode), intent(inout) :: nodes(:)
   real, intent(in) :: x(3,nopart), m(3,nopart)
   real, intent(inout) :: a(3,nopart)
+  real, optional , intent(inout) :: interactionlist(:,:)
+  integer, intent(inout) :: nodeindex1,nodeindex2
   type(octreenode) :: newnode1,newnode2, splitnode, regnode
-  integer :: i, j, nodeindex1, nodeindex2,counter 
+  integer :: i, j, counter 
   real :: rmax1, rmax2,cm1(3),cm2(3)
   real :: fnode(20),quads(6)
   real :: dr,dx,dy,dz,totmass
   integer :: particleindex(10),particleindex2(10) 
   real :: c0,c1(3),c2(3,3),c3(3,3,3)
   logical :: nodesAreEqual, flag
-  integer :: regnodechild(128)
+  integer :: regnodechild(128), splitnodeindex,regnodeindex,newnodeindex1,newnodeindex2
+  integer, allocatable :: particlesforsum(:)
   
-  rmax1 = node1 % rmax
-  rmax2 = node2 % rmax 
+  rmax1 = nodes(nodeindex1) % rmax
+  rmax2 = nodes(nodeindex2) % rmax 
 
   quads(:) = 0.0
   counter = 0
@@ -33,30 +36,32 @@ module interaction
   particleindex = 0.0
   particleindex2 = 0.0
 
-  regnodechild(128) = 0.
+  regnodechild(:) = 0.
   c0 = 0.
   c1 = 0.
   c2 = 0.
   c3 = 0.
 
+  print*, "Node indexes: ", nodeindex1, nodeindex2
+
   ! STILL NEED TO COMPUTE BODY-BODY, BODY-NODE, NODE_BODY 
   ! BODY SELF INTERACTION IS IGNORED
-  nodesAreEqual = nodes_equal(node1,node2)
-  if (nodesAreEqual .EQV. .true. ) then
+  nodesAreEqual = nodes_equal(nodes(nodeindex1),nodes(nodeindex2))
+  if (nodesAreEqual) then
     ! If we are doing leafnode leafnode 
-   if (node1 % isLeaf .EQV. .true.) then 
+   if (nodes(nodeindex1) % isLeaf) then 
      ! Get index of all bodies 
      do i=1, 10
-       if (node1 % data(i) /= 0) then
-         particleindex(i) = node1 % data(i)
+       if (nodes(nodeindex1) % data(i) /= 0) then
+         particleindex(i) = nodes(nodeindex1) % data(i)
        endif  
      enddo 
     ! CALL DIRECT SUM 
     print*,"Direct sum"
-    print*, x
-    call get_accel(x,a,m,np,particleindex,particleindex)
-    print*,a
-    stop
+    !print*, x
+    call get_accel(x,a,m,np,particleindex,particleindex2)
+    !print*,a
+  !stop
     return 
    
    ! CELL SELF INTERACTION IS SPLIT INTO MI BETWEEN SUBNODES
@@ -67,22 +72,28 @@ module interaction
       do j=1,8
 
         ! Get the index of the sub-cells
-
+         !print*, i
+         !print*, j
+         !print*, nodes(nodeindex1) % children(i)
+         !print*, nodes(nodeindex2) % children(j)
         ! If children exist
-        if (node1 % children(i) .NE. 0 .AND. node2 % children(j) .NE. 0) then 
-         nodeindex1 = node1 % children(i)
-         nodeindex2 = node2 % children(j)
+        if (nodes(nodeindex1) % children(i) .NE. 0 .AND. nodes(nodeindex2) % children(j) .NE. 0) then 
+         !nodeindex1 = nodes(nodeindex1) % children(i)
+         !nodeindex2 = nodes(nodeindex2) % children(j)
          print*, nodeindex1
          print*, nodeindex2
          counter = counter + 1
-         print*,"Counter: ", counter
+         !print*,"Counter: ", counter
 
           ! Get the sub-cells
-          newnode1 = nodes(nodeindex1)
-          newnode2 = nodes(nodeindex2)
+          !newnode1 = nodes(nodeindex1)
+          !newnode2 = nodes(nodeindex2)
+          newnodeindex1 = nodes(nodeindex1) % children(i)
+          newnodeindex2 = nodes(nodeindex2) % children(j)
 
+          !print*, "Interact called"
           ! call the interact for each of the sub-cells
-          call interact(newnode1, newnode2, nodes,x,m,a,nopart)
+          call interact(newnodeindex1, newnodeindex2, nodes,x,m,a,nopart)
 
         endif 
 
@@ -93,12 +104,12 @@ module interaction
 
 
 
-  elseif (well_seperated(node1,node2)) then 
-
+  !elseif (well_seperated(nodes(nodeindex1),nodes(nodeindex2))) then 
+   elseif (.false.) then 
 
   
 
-  ! WELL SEPERATED NODE MI IS CALCULATED: TAYLOR COEFFs computed and added to 
+  ! WELL SEPARATED NODE MI IS CALCULATED: TAYLOR COEFFs computed and added to 
   ! node data fields
 
  
@@ -110,20 +121,20 @@ module interaction
     ! ------------------------
     ! ------------------------
     ! ------------------------
-    cm1 = node1 % centerofmass
-    cm2 = node2 % centerofmass
+    cm1 = nodes(nodeindex1) % centerofmass
+    cm2 = nodes(nodeindex2) % centerofmass
     dx = cm1(1) - cm2(1)
     !print*, "Dx: ", dx
     dy = cm1(2) - cm2(2)
     !print*, "Dy: ", dy
     dz = cm1(3) - cm2(3)
     !print*, "Dz: ", dz
-    dr = 1./(norm2(cm1-cm2))
+    dr = 1./(sqrt(dot_product(cm1-cm2,cm1-cm2)))
     !print*, "Dr: ", dr 
 
     fnode = 0.0
 
-    totmass = node2 % totalmass
+    totmass = nodes(nodeindex2) % totalmass
     !totmass = 1.0
 
     call compute_fnode(dx,dy,dz,dr,totmass,quads,fnode)
@@ -131,10 +142,12 @@ module interaction
 
     ! store coeff for walk phase 
     !node1 % fnode = node1 % fnode + fnode
-    node1 % c0 =  node1%c0 + c0
-    node1 % c1 = node1%c1 + c1
-    node1 % c2 = node1 % c2 + c2
-    node1 % c3 = node1 % c3 + c3
+    !print*, "Stored poten: "
+    nodes(nodeindex1) % c0 =  nodes(nodeindex1)%c0 + c0
+    !print*, nodes(nodeindex1) % c0 
+    nodes(nodeindex1) % c1 = nodes(nodeindex1)%c1 + c1
+    nodes(nodeindex1) % c2 = nodes(nodeindex1) % c2 + c2
+    nodes(nodeindex1) % c3 = nodes(nodeindex1) % c3 + c3
 
     ! print poten
     !print*, "Poten is: ", fnode(20)
@@ -147,25 +160,29 @@ module interaction
     print*, "Split nodes"
 
     if (rmax1 > rmax2) then
-     splitnode = node1
-     regnode = node2
+     splitnode = nodes(nodeindex1)
+     splitnodeindex = nodeindex1
+     regnode = nodes(nodeindex2)
+     regnodeindex = nodeindex2
     else 
-     splitnode = node2
-     regnode = node1
+     splitnode = nodes(nodeindex2)
+     splitnodeindex = nodeindex2
+     regnode = nodes(nodeindex1)
+     regnodeindex = nodeindex1
     endif 
 
     ! process MI's on node and splitnode children
     if (.not. splitnode % isLeaf ) then 
     do i=1,8
-      nodeindex1 = splitnode % children(i)
-      newnode1 = nodes(nodeindex1)
+      splitnodeindex = splitnode % children(i)
+      !newnode1 = nodes(nodeindex1)
       print*, "Internal splitnode case"
-      call interact(regnode,newnode1,nodes,x,m,a,nopart)
+      call interact(regnodeindex,splitnodeindex,nodes,x,m,a,nopart)
     enddo
 
     ! LEAF-NODE NODE 
     elseif(splitnode % isLeaf .AND. .NOT. regnode % isLeaf) then
-      print*, "FIX THIS"
+      !print*, "FIX THIS"
 
       ! Call poten function
       ! Need a way to get all of the children of a node for direct sum
@@ -174,20 +191,21 @@ module interaction
 
       do i=1,128
         if (regnode % bodychildren(i) /= 0) then
-          print*, i
+          !print*, i
           regnodechild(i) = regnode % bodychildren(i)
         endif 
       enddo 
 
       do i=1,10
         if (splitnode % data(i) /= 0) then
-          particleindex(i) = node1 % data(i)
+          particleindex(i) = splitnode % data(i)
         endif 
       enddo 
 
       ! CALL DIRECT SUM
 
-     call get_accel(x,a,m,np,particleindex,regnodechild)
+     !call get_accel(x,a,m,np,particleindex,regnodechild)
+     call get_accel_leafnode(x,a,m,np,particleindex,regnodechild)
 
       ! Get children of a leaf node 
 
@@ -199,15 +217,15 @@ module interaction
 
        !Get index of all bodies 
      do i=1, 10
-      print*, i
-       if (node1 % data(i) /= 0) then
+      !print*, i
+       if (nodes(nodeindex1) % data(i) /= 0) then
          !print*, "Crash 1"
-         particleindex(i) = node1 % data(i)
+         particleindex(i) = nodes(nodeindex1) % data(i)
          print*, "particleindex: ", particleindex(i)
        endif
-       if (node2 % data(i) /= 0) then
+       if (nodes(nodeindex2) % data(i) /= 0) then
          !print*, "Crash2"
-         particleindex2(i) = node2 % data(i)
+         particleindex2(i) = nodes(nodeindex2) % data(i)
          print*, "particleindex2: ", particleindex2(i)
        endif
 
@@ -215,7 +233,8 @@ module interaction
 
      print*, "Finished getting bodies"
      ! CALL DIRECT SUM 
-    call get_accel(x,a,m,np,particleindex,particleindex2)
+    !call get_accel(x,a,m,np,particleindex,particleindex2)
+    call get_accel_leafnode(x,a,m,np,particleindex,particleindex2)
 
 
     endif 
@@ -241,5 +260,52 @@ module interaction
   endif 
 
 end function nodes_equal
+
+function get_direct_sum_particles(particleindex1,particleindex2) result(particles)
+  integer,intent(in) :: particleindex1(:),particleindex2(:)
+  integer :: index1, index2, listsize,i
+  integer, allocatable :: particles(:)
+
+  index1 = size(particleindex1)
+  index2 = size(particleindex2)
+  listsize = size(particleindex1) + size(particleindex2)
+  allocate(particles(listsize))
+  particles = 0.
+  
+  do i=1, index1
+    particles(i) = particleindex1(i)
+  enddo 
+
+  i = index1 + 1
+
+  do i=1, index2
+    if (.NOT. in_list(particles,particleindex2(i))) then
+      particles(i+index1) = particleindex2(i)
+    endif 
+  enddo 
+
+
+
+
+end function get_direct_sum_particles
+
+LOGICAL function in_list(list,index)
+ integer, intent(in) :: list(:),index
+ integer :: listsize,i
+
+ listsize = size(list)
+
+ ! This will be n^2 but n should be small so its fine 
+ in_list = .FALSE.
+ do i=1,listsize
+  if (list(i) == index) then
+    in_list = .TRUE.
+  endif 
+ enddo 
+
+end function in_list
+
+
+
  
 end module interaction 

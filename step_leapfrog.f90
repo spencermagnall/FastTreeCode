@@ -43,7 +43,8 @@ module step_leapfrog
         rmax = 0.
         cm = 0.
         call find_rmax(x,nodes,rootNode,rmax)
-        call interact(nodes(1),nodes(1),nodes,x,m,a,np)
+        rootnode = 1
+        call interact(rootNode,rootNode,nodes,x,m,a,np)
         print*, "Accel:"
         print*, a
         !STOP
@@ -54,7 +55,7 @@ module step_leapfrog
         call evaluate_gravity(nodes(1),nodes,cm,c0,c1,c2,c3,x,a)
         print*, "Accel:"
         print*, a
-        STOP
+        !STOP
     endif 
 
     do i=1, np

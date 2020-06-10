@@ -7,8 +7,9 @@ module evaluate
   type(octreenode), intent(inout) :: node, nodes(:)
   real,intent(inout) :: c0,c1(3),c2(3,3),c3(3,3,3),z0(3),x(:,:),accel(:,:)
   type(octreenode) :: childnode
-  real :: z1(3),xbod(3),bodpot,bodaccel(3)
+  real :: z1(3),xbod(3),bodpot,bodaccel(3),accelbef(3)
   integer :: i,nochild,bodyindex
+  real :: c0new, c1new(3), c2new(3,3),c3new(3,3,3),z0new(3)
   !real :: c0old,c1old(3),c2old(3,3),c3old(3,3,3)
 
   bodpot = 0.
@@ -33,58 +34,70 @@ module evaluate
 
   ! TRANSLATE TAYLOR SERIES T0 TO CENTER OF MASS OF A
   call translate_expansion_center(z0,z1,c0,c1,c2,c3)
+
+  !dr = z0-z1
+
+  !call expand_fgrav_in_taylor_series()
   
   ! TA += T0
   ! Sum up the field tensors in a taylor series to get poten
   ! Accumulate field tensors 
-  c0 = node % c0 + c0
+  c0new = node % c0 + c0
   !print*, "C0: "
   !print*,c0
-  c1 = node % c1 + c1
+  c1new = node % c1 + c1
   !print*, "C1: "
   !print*,c1
-  c2 = node % c2 + c2
+  c2new = node % c2 + c2
   !print*, "C2: "
   !print*,c2
-  c3 = node % c3 + c3
+  c3new = node % c3 + c3
   !print*, "C3: "
   !print*, c3
   ! FOR BODY CHILDREN OF A 
 
  !STOP
 
-  nochild = size(node % bodychildren)
+  nochild = node % bodychildpont
+  if (node % isLeaf) then
   do i=1, nochild
-    if (node%bodychildren(i)==0) then
-      EXIT
-    endif 
+    !if (node%data(i)==0) then
+      !EXIT
+    !endif 
     ! Get the index of the body 
     bodyindex = node % bodychildren(i)
+    !bodyindex = node % data(i)
     xbod = x(:,bodyindex)
 
 
 
    ! Evaluate TA at body's position
    !call poten_at_bodypos(xbod,z1,c0,c1,c2,c3,bodpot)
-   call accel_at_bodypos(xbod,z1,c0,c1,c2,c3,bodaccel)
+   bodaccel = 0.
+   call accel_at_bodypos(xbod,z1,c0new,c1new,c2new,c3new,bodaccel)
 
    ! add to body's potential and acceleration
 
    !poten(bodyindex) = poten(bodyindex) + bodpot
+   print*, "accel bef:",accel(:,bodyindex)
+   accelbef = accel(:,bodyindex)
    accel(:,bodyindex) = accel(:,bodyindex) + bodaccel
-   print*, "accel:"
-   print*, accel(:,bodyindex)
+   print*, "bodaccel: ", bodaccel
+   print*, "delta accel:"
+   print*, accel(:,bodyindex) - accelbef
+
 
   enddo 
+ endif 
 
   ! FOR CHILDREN OF A 
   ! change center of mass
-  z0 = z1
+  z0new = z1
   do i=1, 8
 
    if (node % children(i) /= 0) then  
     childnode = nodes(node % children(i))
-    call evaluate_gravity(childnode,nodes,z0,c0,c1,c2,c3,x,accel)
+    call evaluate_gravity(childnode,nodes,z0new,c0new,c1new,c2new,c3new,x,accel)
    endif 
 
   enddo  
@@ -111,9 +124,14 @@ module evaluate
   !print*, "c3"
   !print*, c3old(2,1,1)
 
-  sep1 = z0-z1
+  sep1 = z1-z0
   call outer_product1(sep1,sep1,sep2)
   call outer_product2(sep2,sep1,sep3)
+
+
+  print*, "Second term value: "
+  print*, 0.5*inner_product2(sep2,c2old)
+  !print*, 0.5*dot_product(sep2,c2old)
 
   ! The components of these sums should all have the save order as the coefficent i.e  c0 = scalar, c1 = vector
   c0 = c0old + dot_product(c1old,sep1) + 0.5*inner_product2(sep2,c2old) + 1./6.*inner_product3(sep3,c3)
@@ -136,9 +154,9 @@ module evaluate
   !sep2 = matmul(RESHAPE(sep1,(/3,1/)), RESHAPE(sep1,(/1,3/)))
   call outer_product1(sep1,sep1,sep2)
 
-  accel = accel  + c1 &
-  + inner_product2_to_vec(sep1,c2) !&
-  !+ 0.5*inner_product23_to_vec(sep2,c3)
+  accel = accel  + (c1 &
+  + inner_product2_to_vec(sep1,c2)) &
+  + 0.5*inner_product23_to_vec(sep2,c3)
 
  end subroutine accel_at_bodypos
  subroutine poten_at_bodypos(x,com,c0,c1,c2,c3,poten)
@@ -196,6 +214,7 @@ module evaluate
 
   do j=1,3
     do i=1,3
+      !print*, i, j 
       scalar = scalar + x2(i,j)*c2(i,j)
     enddo 
   enddo 
@@ -247,7 +266,7 @@ module evaluate
   do k=1,3
     do j=1,3
       do i=1,3 
-        thevector(k) = thevector(k) + tens1(i,j)*tens2(i,j,k)
+        thevector(i) = thevector(i) + tens1(j,k)*tens2(i,j,k)
       enddo
     enddo 
   enddo 
@@ -265,7 +284,7 @@ module evaluate
   do k=1,3
     do j=1,3
       do i=1,3
-        thetens(j,k) = thetens(j,k) + tens2(j,k,i)*tens1(i)
+        thetens(i,j) = thetens(i,j) + tens2(i,j,k)*tens1(k)
 
       enddo 
     enddo 

@@ -12,12 +12,15 @@ program nbody
       use interaction
       use evaluate
       use testgravity
+      use testdirect
+      use potendirect
       implicit none 
       type(octreenode), allocatable :: nodes(:)
-      integer, parameter :: nopart = 10
+      integer, parameter :: nopart = 11
       real :: x(3, nopart)
       real :: v(3, nopart)
       real :: a(3, nopart)
+      real :: atest(3,nopart)
       real :: poten(nopart)
       real :: m(nopart)
       integer :: iter,output_freq
@@ -26,16 +29,20 @@ program nbody
       real :: p(3)
       real:: pmag, pmagold, deltap 
       real :: angmom(3),rmax
-      integer :: rootnode,i
+      integer :: rootnode,i,node1,node2
       real :: sumMass, cm(3)
       real :: c0,c1(3),c2(3,3),c3(3,3,3)
+      integer :: interactionlist(nopart,nopart)
+
+
       
       c0 = 0.
       c1 = 0.
       c2 = 0.
       c3 = 0.
 
-      !call test_gravity()
+      call test_gravity()
+      call test_coeff_trans()
       !STOP
       !x(:,1) = (/2.0,2.0,2.0/)
       !x(:,2) = (/1,1,1/)
@@ -60,20 +67,26 @@ program nbody
       dt = 1000
       iter = 0 
       tmax = 500000
-      output_freq = 100 
+      output_freq = 1 
       rootNode = 1
       sumMass = 0.0
       cm = 0.0
       a = 0.
+      atest = 0.
+      interactionlist = 0.
+      
       ! PUT PARTICLE SETUP HERE
       call init(x,v,m,nopart)
+      call get_accel_test(x,atest,m,nopart)
       print*, "Finished setup!"
+      !call test_direct(x,m,nopart)
+      !STOP
       !call write_output(x,v,a,m,nopart,t)
       !STOP
       !call maketreecontrived(nodes,x,v,a,nopart)
       call maketree(nodes,x,v,a,nopart)
       print*, "Finished tree build!"
-      !call print_tree(nodes,x,0,1)
+      call print_tree(nodes,x,0,1)
       !STOP 
       call get_com(x,v,m,nopart,nodes,rootNode,sumMass,cm)
       ! Find rmax for each node
@@ -84,20 +97,28 @@ program nbody
       call print_tree(nodes,x,0,1)
       !STOP
       a = 0.
-      call interact(nodes(1),nodes(1),nodes,x,m,a, nopart)
+      node1 = 1
+      node2 = 1
+      call interact(node1,node2,nodes,x,m,a, nopart)
       !print*,nodes(1) % c3
-      print*, "Accel:"
-      print*, a
-      STOP
+      !print*, "Accel:"
+      !print*, a
+      !print*, nodes(1) % isLeaf
+      !STOP
       c0 = 0.
       c1 = 0.
       c2 = 0.
       c3 = 0.
-      call evaluate_gravity(nodes(1),nodes,cm,c0,c1,c2,c3,x,a)
+      !call evaluate_gravity(nodes(1),nodes,cm,c0,c1,c2,c3,x,a)
       print*,"Accel: "
       do i=1, nopart
         print*, a(:,i)
-      enddo 
+      enddo
+      print*, "Accel test: "
+      do i=1, nopart
+        print*, atest(:,i)
+      enddo
+      
       STOP
       !call get_accel(x,a,m,nopart)
       !STOP
