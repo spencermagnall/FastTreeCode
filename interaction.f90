@@ -19,7 +19,7 @@ module interaction
   integer :: i, j, counter 
   real :: rmax1, rmax2,cm1(3),cm2(3)
   real :: fnode(20),quads(6)
-  real :: dr,dx,dy,dz,totmass
+  real :: dr,dx(3),dy,dz,totmass,r,r2
   integer :: particleindex(10),particleindex2(10) 
   real :: c0,c1(3),c2(3,3),c3(3,3,3)
   logical :: nodesAreEqual, flag
@@ -80,10 +80,10 @@ module interaction
         if (nodes(nodeindex1) % children(i) .NE. 0 .AND. nodes(nodeindex2) % children(j) .NE. 0) then 
          !nodeindex1 = nodes(nodeindex1) % children(i)
          !nodeindex2 = nodes(nodeindex2) % children(j)
-         print*, nodeindex1
-         print*, nodeindex2
+         !print*, nodeindex1
+         !print*, nodeindex2
          counter = counter + 1
-         !print*,"Counter: ", counter
+         print*,"Counter: ", counter
 
           ! Get the sub-cells
           !newnode1 = nodes(nodeindex1)
@@ -104,8 +104,10 @@ module interaction
 
 
 
-  !elseif (well_seperated(nodes(nodeindex1),nodes(nodeindex2))) then 
-   elseif (.false.) then 
+  elseif (well_seperated(nodes(nodeindex1),nodes(nodeindex2))) then 
+  !elseif (.false.) then 
+    print*, "Well separated!"
+   
 
   
 
@@ -123,28 +125,45 @@ module interaction
     ! ------------------------
     cm1 = nodes(nodeindex1) % centerofmass
     cm2 = nodes(nodeindex2) % centerofmass
-    dx = cm1(1) - cm2(1)
-    !print*, "Dx: ", dx
-    dy = cm1(2) - cm2(2)
+
+    call get_dx_dr(cm1,cm2,dx,dr)
+    print*, "Cm of node1: ",cm1
+    print*, "Cm of node2: ",cm2
+    !dx = cm1(1) - cm2(1)
+    print*, "Dx: ", dx
+    !dy = cm1(2) - cm2(2)
     !print*, "Dy: ", dy
-    dz = cm1(3) - cm2(3)
+    !dz = cm1(3) - cm2(3)
     !print*, "Dz: ", dz
-    dr = 1./(sqrt(dot_product(cm1-cm2,cm1-cm2)))
+    !dr = 1./(sqrt(dot_product(cm1-cm2,cm1-cm2)))
     !print*, "Dr: ", dr 
 
     fnode = 0.0
 
     totmass = nodes(nodeindex2) % totalmass
+    print*, "Totalmass: ",totmass
     !totmass = 1.0
 
-    call compute_fnode(dx,dy,dz,dr,totmass,quads,fnode)
-    call compute_coeff(dx,dy,dz,dr,totmass,quads,c0,c1,c2,c3)
+    ! calculate real accel here 
+    print*, "Real accel: "
+     r2 = dot_product(dx,dx)
+     r  = sqrt(r2)
+     print*, -totmass*(1/((r2)**1.5))*dx 
+
+    c0 = 0.
+    c1 = 0.
+    c2 = 0.
+    c3 = 0.
+    call compute_fnode(dx(1),dx(2),dx(3),dr,totmass,quads,fnode)
+    call compute_coeff(dx(1),dx(2),dx(3),dr,totmass,quads,c0,c1,c2,c3)
 
     ! store coeff for walk phase 
     !node1 % fnode = node1 % fnode + fnode
-    !print*, "Stored poten: "
+    print*, "Stored acccel: "
     nodes(nodeindex1) % c0 =  nodes(nodeindex1)%c0 + c0
-    !print*, nodes(nodeindex1) % c0 
+    print*, nodes(nodeindex1) % c1
+    print*, "calc accel: "
+    print*,c1
     nodes(nodeindex1) % c1 = nodes(nodeindex1)%c1 + c1
     nodes(nodeindex1) % c2 = nodes(nodeindex1) % c2 + c2
     nodes(nodeindex1) % c3 = nodes(nodeindex1) % c3 + c3
@@ -305,7 +324,17 @@ LOGICAL function in_list(list,index)
 
 end function in_list
 
+subroutine get_dx_dr(x1,x2,dx,dr)
+  real, intent(in) :: x1(3),x2(3)
+  real, intent(out) :: dx(3),dr
+  real :: h
 
+
+  h = 0.1
+  dx = x1 - x2
+  dr = 1./(sqrt(dot_product(dx,dx) + h**2))
+
+ end subroutine get_dx_dr
 
  
 end module interaction 

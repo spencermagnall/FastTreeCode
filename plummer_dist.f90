@@ -25,7 +25,7 @@ module plummer_dist
    yi = 0.0
    zi = 0.0
    totmass = 1.0
-   mpart = totmass/np
+   mpart = totmass/float(np)
 
    m(:) = mpart
    

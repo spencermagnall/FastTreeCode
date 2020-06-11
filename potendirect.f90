@@ -34,7 +34,7 @@ module potendirect
   open(unit=56,file="interactions.txt")
   ! Put all the particles into one list 
 
-  h = 5000.
+  h = 0.1
   ! in this case we don't want to reset a
   ! but is should be done at the start of each step
   ! THIS IS WRONG!!
@@ -76,7 +76,7 @@ subroutine get_accel_leafnode(x,a,m,np,particlesindex1,particlesindex2)
   integer :: indexi,indexj
 
 
-  h = 5000.
+  h = 0.1
   ! in this case we don't want to reset a
   ! but is should be done at the start of each step
   ! THIS IS WRONG!!
@@ -169,7 +169,7 @@ subroutine get_accel_test(x,a,m,np)
   real :: h,dx(3),r2,r
   integer :: i,j
 
-  h = 5000.
+  h = 0.1
 
   ! SUBOUTINE FOR TESTING THAT ACCEL IS COMPUTED CORRECTLY 
   a = 0.

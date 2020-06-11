@@ -1,8 +1,8 @@
 program nbody
       use octree
       use contrivedtree
-      use setup_binary
-      !use plummer_dist
+      !use setup_binary
+      use plummer_dist
       use step_leapfrog
       use output
       !use poten
@@ -16,7 +16,7 @@ program nbody
       use potendirect
       implicit none 
       type(octreenode), allocatable :: nodes(:)
-      integer, parameter :: nopart = 11
+      integer, parameter :: nopart = 20
       real :: x(3, nopart)
       real :: v(3, nopart)
       real :: a(3, nopart)
@@ -64,9 +64,9 @@ program nbody
 
       !STOP
       t = 0
-      dt = 1000
+      dt = 0.1
       iter = 0 
-      tmax = 500000
+      tmax = 100
       output_freq = 1 
       rootNode = 1
       sumMass = 0.0
@@ -109,7 +109,7 @@ program nbody
       c1 = 0.
       c2 = 0.
       c3 = 0.
-      !call evaluate_gravity(nodes(1),nodes,cm,c0,c1,c2,c3,x,a)
+      call evaluate_gravity(nodes(1),nodes,cm,c0,c1,c2,c3,x,a)
       print*,"Accel: "
       do i=1, nopart
         print*, a(:,i)
@@ -119,7 +119,7 @@ program nbody
         print*, atest(:,i)
       enddo
       
-      STOP
+      !STOP
       !call get_accel(x,a,m,nopart)
       !STOP
       call write_output(x,v,a,m,nopart,t)

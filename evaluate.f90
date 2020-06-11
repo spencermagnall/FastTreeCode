@@ -19,18 +19,22 @@ module evaluate
   ! TA 
 
   !print*, nodes(1) % c0
-  !print*, "c0 before"
-  !print*,c0
-  !print*,"c1 before"
-  !print*,c1
-  !print*,"c2 before"
-  !print*,c2
-  !print*,"c3 before"
-  !print*, c3
+  print*, "c0 before"
+  print*,c0
+  print*,"c1 before"
+  print*,c1
+  print*,"c2 before"
+  print*,c2
+  print*,"c3 before"
+  print*, c3
+
+   print*, "Center of mass (old): ", z0
   ! Get CoM of current node
    z1 = node % centerofmass
-   print*, "Center of Mass: "
+   print*, "Center of Mass new: "
    print*, z1
+
+   print*, "Node mass: ", node % totalmass
 
   ! TRANSLATE TAYLOR SERIES T0 TO CENTER OF MASS OF A
   call translate_expansion_center(z0,z1,c0,c1,c2,c3)
@@ -42,31 +46,43 @@ module evaluate
   ! TA += T0
   ! Sum up the field tensors in a taylor series to get poten
   ! Accumulate field tensors 
+
+  print*, "Node taylor coeffs: "
+  print*, "c0 node: "
+  print*, node % c0 
+  print*, "c1 node: "
+  print*, node % c1
+  print*, "c2 node: "
+  print*, node % c2
+  print*, "c3 node: "
+  print*, node % c3
+
   c0new = node % c0 + c0
-  !print*, "C0: "
-  !print*,c0
+  print*, "C0: "
+  print*,c0new
   c1new = node % c1 + c1
-  !print*, "C1: "
-  !print*,c1
+  print*, "C1: "
+  print*,c1new
   c2new = node % c2 + c2
-  !print*, "C2: "
-  !print*,c2
+  print*, "C2: "
+  print*,c2new
   c3new = node % c3 + c3
-  !print*, "C3: "
-  !print*, c3
+  print*, "C3: "
+  print*, c3new
   ! FOR BODY CHILDREN OF A 
 
  !STOP
 
   nochild = node % bodychildpont
   if (node % isLeaf) then
-  do i=1, nochild
-    !if (node%data(i)==0) then
-      !EXIT
-    !endif 
+  do i=1, 10
+    print*, "Child index: ",i
+    if (node%data(i)==0) then
+      EXIT
+    endif 
     ! Get the index of the body 
-    bodyindex = node % bodychildren(i)
-    !bodyindex = node % data(i)
+    !bodyindex = node % bodychildren(i)
+    bodyindex = node % data(i)
     xbod = x(:,bodyindex)
 
 
@@ -82,6 +98,7 @@ module evaluate
    print*, "accel bef:",accel(:,bodyindex)
    accelbef = accel(:,bodyindex)
    accel(:,bodyindex) = accel(:,bodyindex) + bodaccel
+   print*, "Accel now: ", accel(:,bodyindex)
    print*, "bodaccel: ", bodaccel
    print*, "delta accel:"
    print*, accel(:,bodyindex) - accelbef
@@ -96,6 +113,7 @@ module evaluate
   do i=1, 8
 
    if (node % children(i) /= 0) then  
+    print*, "Childnode index: ", node % children(i)
     childnode = nodes(node % children(i))
     call evaluate_gravity(childnode,nodes,z0new,c0new,c1new,c2new,c3new,x,accel)
    endif 

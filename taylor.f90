@@ -93,10 +93,10 @@ subroutine compute_fnode(dx,dy,dz,dr,totmass,quads,fnode)
  fnode(20) = fnode(20) - totmass*dr - 0.5*rijQij*dr3   ! potential
 
 
- print*, "C1 correct"
- print*, fnode(1:3)
- print*, "C2 correct"
- print*, fnode(4:9)
+ !print*, "C1 correct"
+ !print*, fnode(1:3)
+ !print*, "C2 correct"
+ !print*, fnode(4:9)
  
 
 end subroutine compute_fnode
@@ -196,11 +196,11 @@ subroutine compute_coeff(dx,dy,dz,dr,totmass,quads,c0,c1,c2,c3)
  !print*, "Coeff 0:"
  !print*, c0
 
- print*, "Coeff 1:"
- print*, c1
+ !print*, "Coeff 1:"
+ !print*, c1
 
- print*, "Coeff 2:"
- print*, c2
+ !print*, "Coeff 2:"
+ !print*, c2
 
  !print*, "Coeff 3:"
  !print*, c3 
