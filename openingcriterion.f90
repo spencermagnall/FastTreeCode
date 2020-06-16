@@ -3,12 +3,14 @@ module opening_criterion
  implicit none
  contains
 
- logical function well_seperated(node1,node2) result(bool)
+ logical function well_separated(node1,node2) result(bool)
   type(octreenode), intent(in) :: node1, node2
   real :: cm1(3), cm2(3), dx(3), zmag
   real :: theta,rmax1,rmax2
   !logical :: bool
 
+  !bool =.true.
+  !return 
   theta = 0.3
 
   cm1 = node1 % centerofmass
@@ -31,7 +33,7 @@ module opening_criterion
   else 
     bool = .FALSE.
   endif  
- end function well_seperated
+ end function well_separated
 
  subroutine distance_to_corner(node,rcorn)
   type(octreenode), intent(in) :: node

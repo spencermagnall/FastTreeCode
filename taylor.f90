@@ -106,10 +106,10 @@ subroutine compute_coeff(dx,dy,dz,dr,totmass,quads,c0,c1,c2,c3)
  real, intent(in) :: quads(6)
  !real, intent(inout) :: coeff(4)
  real, intent(inout) :: c0,c1(3),c2(3,3),c3(3,3,3)
- real :: d0,d1,d1x,d1y,d1z,d2x,d2y,d2z,d3x,d3y,d3z
+ real :: d0,d1
  real :: d2,d3
  real :: r
- real :: d1arry(3)
+ !real :: d1arry(3)
  real :: rarry(3)
  real :: dr2,dr3,dr4,dr5,dr6,dr4m3
  integer :: i, j, k
@@ -134,9 +134,7 @@ subroutine compute_coeff(dx,dy,dz,dr,totmass,quads,c0,c1,c2,c3)
  d2 = -3.*d1*dr2
  print*, d2
  d3 = -5.*d2*dr2
- d1x = -(1./dx)*(1./dx**2)
- d1y = -(1./dy)*(1./dy**2)
- d1z = -(1./dz)*(1./dz**2)
+
  dr4m3 = 3.*totmass*dr4
  ! C0 = totmass * Greens function
  ! scalar 
@@ -225,5 +223,9 @@ real function delta(i,j)
  endif 
 
 end function delta
+
+real function greens()
+
+end function greens
 
 end module taylor_expansions

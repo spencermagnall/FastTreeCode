@@ -20,17 +20,9 @@ module momentum
   angm = 0.0
   angi = 0.0
   end = np/2
-  do i=1, end
+  do i=1, np
   	! should be a m in here 
-  	p1= p1 + m(i)*v(:,i)
-  enddo
-
-  start = end+1
-  end = np
-  do i=start, end
-  	p2 = p2 + m(i)*v(:,i)
-  !pmag = p(1)*p(1) + p(2)*p(2) + p(3)*p(3)
-  !pmag = sqrt(pmag)
+  	p = p + m(i)*v(:,i)
   enddo
 
   do i=1, np
@@ -39,7 +31,7 @@ module momentum
   enddo 
   write(*,*) p1
   write(*,*) p2
-  p = p1 + p2 
+  !p = p1 + p2 
   write(*,*) p
  end subroutine get_momentum
 

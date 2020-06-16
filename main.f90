@@ -1,5 +1,6 @@
 program nbody
       use octree
+      use delta_t
       use contrivedtree
       !use setup_binary
       use plummer_dist
@@ -16,7 +17,7 @@ program nbody
       use potendirect
       implicit none 
       type(octreenode), allocatable :: nodes(:)
-      integer, parameter :: nopart = 20
+      integer, parameter :: nopart = 30
       real :: x(3, nopart)
       real :: v(3, nopart)
       real :: a(3, nopart)
@@ -24,9 +25,9 @@ program nbody
       real :: poten(nopart)
       real :: m(nopart)
       integer :: iter,output_freq
-      real :: t, dt,tmax
+      real :: t,dt,tmax,dtnew
       real :: center(3)
-      real :: p(3)
+      real :: p(3),pold(3)
       real:: pmag, pmagold, deltap 
       real :: angmom(3),rmax
       integer :: rootnode,i,node1,node2
@@ -64,10 +65,10 @@ program nbody
 
       !STOP
       t = 0
-      dt = 0.1
+      dt = 0.0001
       iter = 0 
-      tmax = 100
-      output_freq = 1 
+      tmax = 10
+      output_freq = 100 
       rootNode = 1
       sumMass = 0.0
       cm = 0.0
@@ -109,7 +110,7 @@ program nbody
       c1 = 0.
       c2 = 0.
       c3 = 0.
-      call evaluate_gravity(nodes(1),nodes,cm,c0,c1,c2,c3,x,a)
+      !call evaluate_gravity(nodes(1),nodes,cm,c0,c1,c2,c3,x,a)
       print*,"Accel: "
       do i=1, nopart
         print*, a(:,i)
@@ -118,9 +119,15 @@ program nbody
       do i=1, nopart
         print*, atest(:,i)
       enddo
-      
+      print*,"Delta accel"
+      do i=1,nopart
+        print*,atest(:,i) - a(:,i)
+      enddo 
       !STOP
       !call get_accel(x,a,m,nopart)
+      !STOP
+      ! get the timestep
+      !call get_dtnew(0.1,a,dt,nopart)
       !STOP
       call write_output(x,v,a,m,nopart,t)
       !STOP
@@ -138,7 +145,6 @@ program nbody
 
             t = t + dt
             write(*,*) t
-
             if (mod(iter,output_freq) .EQ. 0) then
                   if (t == 10000.OR. t ==11000) then
                       !call print_tree(nodes,x,0,1)
@@ -146,13 +152,16 @@ program nbody
                   endif
                   call write_output(x,v,a,m,nopart,t)
             end if 
+            pold = p
             pmagold = pmag
             call get_momentum(x,v,m,p,angmom,nopart)
             pmag = dot_product(p,p)
             pmag = sqrt(pmag)
-            deltap = pmag - pmagold
+            deltap = sqrt(dot_product(p-pold,p-pold)) 
             write(66,*) t,pmag, angmom, deltap
-
+            call print_tree(nodes,x,0,1)
+            !if (deltap > abs(1.e-14)) stop
+            
             !STOP            
 
       enddo

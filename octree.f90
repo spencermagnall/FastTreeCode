@@ -32,7 +32,7 @@ module octree
 
 
    ! setup the root node
-   call new_node(nodes(1),1.e6,(/0.0,0.0,0.0/))
+   call new_node(nodes(1),100000.,(/0.0,0.0,0.0/))
    
 
    ! endnode is now root
@@ -411,6 +411,8 @@ module octree
   write(*,*) "Total Mass: ", nodes(currentnode) % totalMass
   write(*,*) "Center of Mass: ", nodes(currentnode) % centerofmass
   write(*,*) "Rmax: ", nodes(currentnode) % rmax
+
+  print*, "Current node index is: ", currentnode
 
   do i=1, 10
     if (nodes(currentnode)% data(i) .NE. 0 ) then 

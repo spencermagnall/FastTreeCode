@@ -19,14 +19,14 @@ module evaluate
   ! TA 
 
   !print*, nodes(1) % c0
-  print*, "c0 before"
-  print*,c0
-  print*,"c1 before"
-  print*,c1
-  print*,"c2 before"
-  print*,c2
-  print*,"c3 before"
-  print*, c3
+  !print*, "c0 before"
+  !print*,c0
+  !print*,"c1 before"
+  !print*,c1
+  !print*,"c2 before"
+  !print*,c2
+  !print*,"c3 before"
+  !print*, c3
 
    print*, "Center of mass (old): ", z0
   ! Get CoM of current node
@@ -37,7 +37,8 @@ module evaluate
    print*, "Node mass: ", node % totalmass
 
   ! TRANSLATE TAYLOR SERIES T0 TO CENTER OF MASS OF A
-  call translate_expansion_center(z0,z1,c0,c1,c2,c3)
+  
+  !call translate_expansion_center(z0,z1,c0,c1,c2,c3)
 
   !dr = z0-z1
 
@@ -47,26 +48,30 @@ module evaluate
   ! Sum up the field tensors in a taylor series to get poten
   ! Accumulate field tensors 
 
-  print*, "Node taylor coeffs: "
-  print*, "c0 node: "
-  print*, node % c0 
-  print*, "c1 node: "
-  print*, node % c1
-  print*, "c2 node: "
-  print*, node % c2
-  print*, "c3 node: "
-  print*, node % c3
+  !print*, "Node taylor coeffs: "
+  !print*, "c0 node: "
+  !print*, node % c0 
+  !print*, "c1 node: "
+  !print*, node % c1
+  !print*, "c2 node: "
+  !print*, node % c2
+  !print*, "c3 node: "
+  !print*, node % c3
 
-  c0new = node % c0 + c0
+  !c0new = node % c0 + c0
+  c0new = c0
   print*, "C0: "
   print*,c0new
-  c1new = node % c1 + c1
+  !c1new = node % c1 + c1
+  c1new = c1 
   print*, "C1: "
   print*,c1new
-  c2new = node % c2 + c2
+  c2new = c2
+  !c2new = node % c2 + c2
   print*, "C2: "
   print*,c2new
-  c3new = node % c3 + c3
+  !c3new = node % c3 + c3
+  c3new = c3 
   print*, "C3: "
   print*, c3new
   ! FOR BODY CHILDREN OF A 
@@ -77,9 +82,9 @@ module evaluate
   if (node % isLeaf) then
   do i=1, 10
     print*, "Child index: ",i
-    if (node%data(i)==0) then
-      EXIT
-    endif 
+    !if (node%data(i)==0) then
+    !  EXIT
+    !endif 
     ! Get the index of the body 
     !bodyindex = node % bodychildren(i)
     bodyindex = node % data(i)
@@ -105,7 +110,7 @@ module evaluate
 
 
   enddo 
- endif 
+ else 
 
   ! FOR CHILDREN OF A 
   ! change center of mass
@@ -119,6 +124,8 @@ module evaluate
    endif 
 
   enddo  
+
+  endif 
 
  end subroutine evaluate_gravity
 
@@ -152,9 +159,9 @@ module evaluate
   !print*, 0.5*dot_product(sep2,c2old)
 
   ! The components of these sums should all have the save order as the coefficent i.e  c0 = scalar, c1 = vector
-  c0 = c0old + dot_product(c1old,sep1) + 0.5*inner_product2(sep2,c2old) + 1./6.*inner_product3(sep3,c3)
-  c1 = c1old + inner_product2_to_vec(sep1,c2old) + 0.5*inner_product23_to_vec(sep2,c3old)
-  c2 = c2old + inner_product31_to_2(sep1,c3old)
+  c0 = c0old + dot_product(c1old,sep1) + 0.5*inner_product2(sep2,c2old) !+ 1./6.*inner_product3(sep3,c3)
+  c1 = c1old + inner_product2_to_vec(sep1,c2old) !+ 0.5*inner_product23_to_vec(sep2,c3old)
+  c2 = c2old  !q+ inner_product31_to_2(sep1,c3old)
   c3 = c3old
 
  end subroutine translate_expansion_center
@@ -163,7 +170,7 @@ module evaluate
   real, intent(inout) :: accel(3)
   real, intent(in) :: x(3),com(3)
   real, intent(in) :: c0,c1(3),c2(3,3),c3(3,3,3)
-  real :: sep1(3), sep2(3,3), sep3(3,3,3)
+  real :: sep1(3), sep2(3,3) !, sep3(3,3,3)
 
   ! The N-fold outer products of the seperation
   sep1 = x - com
@@ -172,9 +179,10 @@ module evaluate
   !sep2 = matmul(RESHAPE(sep1,(/3,1/)), RESHAPE(sep1,(/1,3/)))
   call outer_product1(sep1,sep1,sep2)
 
-  accel = accel  + (c1 &
-  + inner_product2_to_vec(sep1,c2)) &
-  + 0.5*inner_product23_to_vec(sep2,c3)
+  !accel = accel  !+ (c1 &
+  !+ inner_product2_to_vec(sep1,c2)) &
+ !+ 0.5*inner_product23_to_vec(sep2,c3)
+ accel = accel + c1 !+ inner_product2_to_vec(sep1,c2) !+ 0.5*inner_product23_to_vec(sep2,c3)
 
  end subroutine accel_at_bodypos
  subroutine poten_at_bodypos(x,com,c0,c1,c2,c3,poten)
@@ -265,7 +273,7 @@ module evaluate
 
   do j=1,3
     do i=1,3
-      thevector(j) = thevector(j) + vec(i)*tens(i,j)
+      thevector(i) = thevector(i) + vec(j)*tens(j,i)
     enddo 
   enddo 
   !print*,"The vector: "
@@ -284,7 +292,7 @@ module evaluate
   do k=1,3
     do j=1,3
       do i=1,3 
-        thevector(i) = thevector(i) + tens1(j,k)*tens2(i,j,k)
+        thevector(i) = thevector(i) + tens1(j,k)*tens2(j,k,i)
       enddo
     enddo 
   enddo 

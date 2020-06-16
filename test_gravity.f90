@@ -146,6 +146,45 @@ contains
   print*, "Dan accel (c1) :"
   print*,f0
 
+  print*, "delta values: "
+  print*, c0-c0ex
+  print*, c1-c1ex
+  print*,c2-c2ex
+  print*,c3-c3ex
+
+
+  ! test symmetric translation 
+
+   dx = 0.
+  dr = 0.
+  c0 = 0.
+  c1 = 0.
+  c2 = 0.0
+  c3 = 0.0
+  c0ex = 0.
+  c1ex = 0.
+  c2ex = 0.
+  c3ex = 0.
+  ! compute the exact value of the coeffs 
+  ! get separations, vector and scalar
+  call get_dx_dr(xposj,xposi,dx,dr)
+  call compute_coeff(dx(1),dx(2),dx(3),dr,totmass,quads,c0ex,c1ex,c2ex,c3ex)
+
+  call get_dx_dr(xposi,xposj,dx,dr)
+  call compute_coeff(dx(1),dx(2),dx(3),dr,totmass,quads,c0,c1,c2,c3)
+
+  !print*, "Coefficent symm: "
+  !print*,c0ex
+  !print*,c1ex
+  !print*,c2ex
+  !print*,c3ex
+  !print*,c0
+  !print*,c1
+  !print*,c2
+  !print*,c3
+
+
+
 
 
 
