@@ -17,7 +17,7 @@ program nbody
       use potendirect
       implicit none 
       type(octreenode), allocatable :: nodes(:)
-      integer, parameter :: nopart = 30
+      integer, parameter :: nopart = 100
       real :: x(3, nopart)
       real :: v(3, nopart)
       real :: a(3, nopart)
@@ -65,7 +65,7 @@ program nbody
 
       !STOP
       t = 0
-      dt = 0.0001
+      dt = 0.01
       iter = 0 
       tmax = 10
       output_freq = 100 
@@ -110,7 +110,9 @@ program nbody
       c1 = 0.
       c2 = 0.
       c3 = 0.
-      !call evaluate_gravity(nodes(1),nodes,cm,c0,c1,c2,c3,x,a)
+      cm = 0.
+      call evaluate_gravity(nodes(1),nodes,cm,c0,c1,c2,c3,x,a)
+      !call get_accel_body(nodes(1),nodes,x,a)
       print*,"Accel: "
       do i=1, nopart
         print*, a(:,i)
@@ -137,7 +139,7 @@ program nbody
        pmag = sqrt(pmag)
         write(66,*) "t "," pmag ", " angm x ", " angm y ", " angm z ", " deltap"
         write(66,*) t,  pmag, angmom, 0.0
-       !STOP
+      ! STOP
       do while(t < tmax)
             iter  = iter + 1
 
@@ -159,7 +161,8 @@ program nbody
             pmag = sqrt(pmag)
             deltap = sqrt(dot_product(p-pold,p-pold)) 
             write(66,*) t,pmag, angmom, deltap
-            call print_tree(nodes,x,0,1)
+            print*, deltap
+            !call print_tree(nodes,x,0,1)
             !if (deltap > abs(1.e-14)) stop
             
             !STOP            

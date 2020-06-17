@@ -128,6 +128,11 @@ contains
   call compute_coeff(dx(1),dx(2),dx(3),dr,totmass,quads,c0,c1,c2,c3)
   call compute_fnode(dx(1),dx(2),dx(3),dr,totmass,quads,fnode)
   dx = xposi - x0
+  print*,"Before transform: "
+  !print*,c0
+  print*,c1
+  print*,c2
+  !print*,c3
   call expand_fgrav_in_taylor_series(fnode,dx(1),dx(2),dx(3),f0(1),f0(2),f0(3),poten)
   call translate_expansion_center(x0,xposi,c0,c1,c2,c3)
 
@@ -152,6 +157,13 @@ contains
   print*,c2-c2ex
   print*,c3-c3ex
 
+  print*, "Reverse transform: "
+  call translate_expansion_center(xposi,x0,c0,c1,c2,c3)
+  !print*,c0
+  print*,c1
+  print*,c2
+  !print*,c3
+
 
   ! test symmetric translation 
 
@@ -174,8 +186,8 @@ contains
   call compute_coeff(dx(1),dx(2),dx(3),dr,totmass,quads,c0,c1,c2,c3)
 
   !print*, "Coefficent symm: "
-  !print*,c0ex
-  !print*,c1ex
+  print*,abs(c0ex) - abs(c0)
+  print*,abs(c1ex) - abs(c1)
   !print*,c2ex
   !print*,c3ex
   !print*,c0

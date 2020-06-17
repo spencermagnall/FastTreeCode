@@ -108,9 +108,9 @@ module interaction
 
 
 
- elseif (well_separated(nodes(nodeindex1),nodes(nodeindex2))) then 
+ !elseif (well_separated(nodes(nodeindex1),nodes(nodeindex2))) then 
   !elseif (.false.) then 
-  !elseif (.true.) then
+  elseif (.true.) then
     print*, "Well separated!"
    
 
@@ -238,8 +238,8 @@ module interaction
     ! store coeff for walk phase 
     !node1 % fnode = node1 % fnode + fnode
     print*, "Stored acccel: "
-    nodes(nodeindex2) % c0 =  nodes(nodeinde2)%c0 + c0
-    print*, nodes(nodeindex1) % c1
+    nodes(nodeindex2) % c0 =  nodes(nodeindex2)%c0 + c0
+    print*, nodes(nodeindex2) % c1
     print*, "calc accel: "
     print*,c1
     nodes(nodeindex2) % c1 = nodes(nodeindex2)%c1 + c1
@@ -252,6 +252,7 @@ module interaction
     !print*, "Poten is: ", poten(20)
 
     !return 
+    !STOP
 
     open(unit=77,file="wellseperated.txt")
     write(77,*), "Node 1:", nodeindex2, "Node 2: ", nodeindex1

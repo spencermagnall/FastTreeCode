@@ -119,6 +119,10 @@ subroutine compute_coeff(dx,dy,dz,dr,totmass,quads,c0,c1,c2,c3)
 
  rarry = (/dx,dy,dz/)
 
+ rx  = dx*dr
+ ry  = dy*dr
+ rz  = dz*dr
+
  ! Note dr = 1/r
  print*, "dr"
  d0 = dr
@@ -131,7 +135,7 @@ subroutine compute_coeff(dx,dy,dz,dr,totmass,quads,c0,c1,c2,c3)
  print*, 'd1'
  print*, d1*totmass
  ! Why is this 3 not 2?????
- d2 = -3.*d1*dr2
+ d2 = 3.*dr3*dr2
  print*, d2
  d3 = -5.*d2*dr2
 
@@ -161,15 +165,15 @@ subroutine compute_coeff(dx,dy,dz,dr,totmass,quads,c0,c1,c2,c3)
 
  ! UNROLLLLLL
 
- c2(1,1) = c2(1,1) + totmass*d1 + totmass*rarry(1)*rarry(1)*d2
- c2(1,2) = c2(1,2) + totmass*rarry(1)*rarry(2)*d2
- c2(1,3) = c2(1,3) + totmass*rarry(1)*rarry(3)*d2
- c2(2,1) = c2(2,1) + totmass*rarry(2)*rarry(1)*d2
- c2(2,2) = c2(2,2) + totmass*d1 + totmass*rarry(2)*rarry(2)*d2
- c2(2,3) = c2(2,3) + totmass*rarry(2)*rarry(3)*d2
- c2(3,1) = c2(3,1) + totmass*rarry(3)*rarry(1)*d2
- c2(3,2) = c2(3,2) + totmass*rarry(3)*rarry(2)*d2
- c2(3,3) = c2(3,3) + totmass*d1 + totmass*rarry(3)*rarry(3)*d2
+ c2(1,1) = c2(1,1) + totmass*d1  - totmass*3.*rx*rx*d1
+ c2(1,2) = c2(1,2) - totmass*3.*rx*ry*d1
+ c2(1,3) = c2(1,3) - totmass*3.*rx*rz*d1
+ c2(2,1) = c2(2,1) + totmass*3.*ry*rx*d1
+ c2(2,2) = c2(2,2) + totmass*d1  - totmass*3.*d1*ry*ry
+ c2(2,3) = c2(2,3) - totmass*3.*ry*rx*d1
+ c2(3,1) = c2(3,1) - totmass*3.*rz*rx*d1
+ c2(3,2) = c2(3,2) - totmass*3.*rz*ry*d1
+ c2(3,3) = c2(3,3) + totmass*d1 - totmass*3.*rz*rz*d1
  
  ! C3
  ! rank3 tensor
