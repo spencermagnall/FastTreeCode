@@ -21,7 +21,7 @@ module interaction
   real :: fnode(20),quads(6)
   real :: dr,dx(3),dy,dz,totmass,r,r2
   integer :: particleindex(10),particleindex2(10) 
-  real :: c0,c1(3),c2(3,3),c3(3,3,3)
+  real :: c0,c1(3),c2(3,3),c3(3,3,3), c0new,c1new(3),c2new(3,3),c3new(3,3,3)
   logical :: nodesAreEqual, flag
   integer :: regnodechild(128), splitnodeindex,regnodeindex,newnodeindex1,newnodeindex2,start
   integer, allocatable :: particlesforsum(:)
@@ -37,30 +37,41 @@ module interaction
   particleindex = 0.0
   particleindex2 = 0.0
 
+  node1empty = .true.
+  node2empty = .true.
+
   regnodechild(:) = 0.
   c0 = 0.
   c1 = 0.
   c2 = 0.
   c3 = 0.
+  c0new = 0.
+  c1new = 0.
+  c2new = 0.
+  c3new = 0.
+
 
   print*, "Node indexes: ", nodeindex1, nodeindex2
 
   ! STILL NEED TO COMPUTE BODY-BODY, BODY-NODE, NODE_BODY 
   ! BODY SELF INTERACTION IS IGNORED
   nodesAreEqual = nodes_equal(nodes(nodeindex1),nodes(nodeindex2))
-  if (nodesAreEqual) then
+  if (nodeindex1 == nodeindex2) then
     ! If we are doing leafnode leafnode 
    if (nodes(nodeindex1) % isLeaf) then 
      ! Get index of all bodies 
      do i=1, 10
        if (nodes(nodeindex1) % data(i) /= 0) then
+         node1empty = .false.
          particleindex(i) = nodes(nodeindex1) % data(i)
        endif  
      enddo 
     ! CALL DIRECT SUM 
     print*,"Direct sum"
     !print*, x
-    call get_accel(x,a,m,np,particleindex,particleindex2)
+    if (.not. node1empty) then
+      !call get_accel(x,a,m,np,particleindex,particleindex2)
+    endif 
     !print*,a
   !stop
     !return 
@@ -74,9 +85,9 @@ module interaction
       do j=start,8
 
         ! Get the index of the sub-cells
-         print*, "i, j: "
-         print*, i
-         print*, j
+         !print*, "i, j: "
+         !print*, i
+         !print*, j
          !print*, nodes(nodeindex1) % children(i)
          !print*, nodes(nodeindex2) % children(j)
         ! If children exist
@@ -133,17 +144,17 @@ module interaction
     cm1 = nodes(nodeindex1) % centerofmass
     cm2 = nodes(nodeindex2) % centerofmass
 
-    print*, "particles in node 1"
-    print*, nodes(nodeindex1) % data
-    print*, "particles in node 2"
-    print*, nodes(nodeindex2) % data
+    !print*, "particles in node 1"
+    !print*, nodes(nodeindex1) % data
+    !print*, "particles in node 2"
+    !print*, nodes(nodeindex2) % data
 
 
     call get_dx_dr(cm1,cm2,dx,dr)
-    print*, "Cm of node1: ",cm1
-    print*, "Cm of node2: ",cm2
+    !print*, "Cm of node1: ",cm1
+    !print*, "Cm of node2: ",cm2
     !dx = cm1(1) - cm2(1)
-    print*, "Dx: ", dx
+    !print*, "Dx: ", dx
     !dy = cm1(2) - cm2(2)
     !print*, "Dy: ", dy
     !dz = cm1(3) - cm2(3)
@@ -154,16 +165,16 @@ module interaction
     fnode = 0.0
 
     totmass = nodes(nodeindex2) % totalmass
-    print*, "Totalmass: ",totmass
+    !print*, "Totalmass: ",totmass
     !totmass = 1.0
 
     ! calculate real accel here 
-    print*, "Real accel: "
+    !print*, "Real accel: "
      r2 = dot_product(dx,dx)
      r  = sqrt(r2)
-     print*, -totmass*(1/((r2)**1.5))*dx 
-     print*, "Real force: "
-     print*, -totmass*(1/((r2)**1.5))*dx * nodes(nodeindex1) %totalmass
+     !print*, -totmass*(1/((r2)**1.5))*dx 
+     !print*, "Real force: "
+     !print*, -totmass*(1/((r2)**1.5))*dx * nodes(nodeindex1) %totalmass
 
     c0 = 0.
     c1 = 0.
@@ -174,11 +185,11 @@ module interaction
 
     ! store coeff for walk phase 
     !node1 % fnode = node1 % fnode + fnode
-    print*, "Stored acccel: "
+    !print*, "Stored acccel: "
     nodes(nodeindex1) % c0 =  nodes(nodeindex1)%c0 + c0
-    print*, nodes(nodeindex1) % c1
-    print*, "calc accel: "
-    print*,c1
+    !print*, nodes(nodeindex1) % c1
+    !print*, "calc accel: "
+    !print*,c1
     nodes(nodeindex1) % c1 = nodes(nodeindex1)%c1 + c1
     nodes(nodeindex1) % c2 = nodes(nodeindex1) % c2 + c2
     nodes(nodeindex1) % c3 = nodes(nodeindex1) % c3 + c3
@@ -196,17 +207,17 @@ module interaction
     cm2 = nodes(nodeindex1) % centerofmass
     cm1 = nodes(nodeindex2) % centerofmass
 
-    print*, "particles in node 1"
-    print*, nodes(nodeindex2) % data
-    print*, "particles in node 2"
-    print*, nodes(nodeindex1) % data
+    !print*, "particles in node 1"
+    !print*, nodes(nodeindex2) % data
+    !print*, "particles in node 2"
+    !print*, nodes(nodeindex1) % data
 
 
     call get_dx_dr(cm1,cm2,dx,dr)
-    print*, "Cm of node1: ",cm1
-    print*, "Cm of node2: ",cm2
+    !print*, "Cm of node1: ",cm1
+    !print*, "Cm of node2: ",cm2
     !dx = cm1(1) - cm2(1)
-    print*, "Dx: ", dx
+    !print*, "Dx: ", dx
     !dy = cm1(2) - cm2(2)
     !print*, "Dy: ", dy
     !dz = cm1(3) - cm2(3)
@@ -217,17 +228,21 @@ module interaction
     fnode = 0.0
 
     totmass = nodes(nodeindex1) % totalmass
-    print*, "Totalmass: ",totmass
+    !print*, "Totalmass: ",totmass
     !totmass = 1.0
 
     ! calculate real accel here 
-    print*, "Real accel: "
+    !print*, "Real accel: "
      r2 = dot_product(dx,dx)
      r  = sqrt(r2)
-     print*, -totmass*(1/((r2)**1.5))*dx 
-     print*, "Real force: "
-     print*, -totmass*(1/((r2)**1.5))*dx * nodes(nodeindex2) %totalmass
+     !print*, -totmass*(1/((r2)**1.5))*dx 
+     !print*, "Real force: "
+     !print*, -totmass*(1/((r2)**1.5))*dx * nodes(nodeindex2) %totalmass
 
+    c0new = c0
+    c1new = c1
+    c2new = c2 
+    c3new = c3 
     c0 = 0.
     c1 = 0.
     c2 = 0.
@@ -237,11 +252,11 @@ module interaction
 
     ! store coeff for walk phase 
     !node1 % fnode = node1 % fnode + fnode
-    print*, "Stored acccel: "
+    !print*, "Stored acccel: "
     nodes(nodeindex2) % c0 =  nodes(nodeindex2)%c0 + c0
-    print*, nodes(nodeindex2) % c1
-    print*, "calc accel: "
-    print*,c1
+    !print*, nodes(nodeindex2) % c1
+    !print*, "calc accel: "
+    !print*,c1
     nodes(nodeindex2) % c1 = nodes(nodeindex2)%c1 + c1
     nodes(nodeindex2) % c2 = nodes(nodeindex2) % c2 + c2
     nodes(nodeindex2) % c3 = nodes(nodeindex2) % c3 + c3
@@ -257,11 +272,19 @@ module interaction
     open(unit=77,file="wellseperated.txt")
     write(77,*), "Node 1:", nodeindex2, "Node 2: ", nodeindex1
 
+    print*,"Values for interaciton"
+    print*,abs(c0 * nodes(nodeindex2) % totalmass) -  abs(c0new * totmass)
+    print*, abs(c1 *nodes(nodeindex2) % totalmass) - abs(c1new * totmass)
+    print*,abs(c2 * nodes(nodeindex2) % totalmass) - abs(c2new * totmass)
+    print*, abs(c3 * nodes(nodeindex2) % totalmass) - abs(c3new * totmass)
+
+    !STOP
+
   endif 
 
   ! THE NODE WITH THE LARGER RMAX IS SPLIT; up to 8 new MI are created and processed 
   else
-    print*, "Split nodes"
+    !print*, "Split nodes"
 
     if (rmax1 > rmax2) then
      splitnode = nodes(nodeindex1)
@@ -280,7 +303,7 @@ module interaction
     do i=1,8
       splitnodeindex = splitnode % children(i)
       !newnode1 = nodes(nodeindex1)
-      print*, "Internal splitnode case"
+      !print*, "Internal splitnode case"
       call interact(regnodeindex,splitnodeindex,nodes,x,m,a,nopart)
       !call interact(splitnodeindex,regnodeindex,nodes,x,m,a,nopart)
     enddo
@@ -294,9 +317,9 @@ module interaction
 
       ! Get children of regular node 
       node1empty = .true.
-      nodeindex2 = .true.
+      node2empty = .true.
 
-      do i=1,128
+      do i=1,size(regnode % bodychildren)
         if (regnode % bodychildren(i) /= 0) then
            node1empty = .false.
           !print*, i
@@ -318,8 +341,13 @@ module interaction
 
       if (.NOT. node1empty .and. .not. node2empty) then
         !call get_accel(x,a,m,np,particleindex,regnodechild)
+        !print*, "Crashing here"
+        !print*, "Particleindex: ", particleindex
+        !print*, "Regnode children: ", regnodechild
         call get_accel_leafnode(x,a,m,np,particleindex,regnodechild)
+        !print*, "Crashing on second loop"
         call get_accel_leafnode(x,a,m,np,regnodechild,particleindex)
+        !print*, "Works fine "
       endif 
      !call get_accel_leafnode(x,a,m,np,particleindex,regnodechild)
 
@@ -354,9 +382,9 @@ module interaction
 
      enddo
 
-     print*, "Finished getting bodies"
-     print*, node1empty
-     print*, node2empty
+     !print*, "Finished getting bodies"
+     !print*, node1empty
+     !print*, node2empty
      ! CALL DIRECT SUM 
     if (.NOT. node1empty .and. .not. node2empty) then
       !call get_accel(x,a,m,np,particleindex,particleindex2)

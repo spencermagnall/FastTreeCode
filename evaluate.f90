@@ -1,7 +1,123 @@
 module evaluate
  use octreetype
  implicit none 
- contains
+
+type evaluate_stack_data
+
+ type(octreenode) :: node 
+ real :: z0(3)
+ real :: c0,c1(3),c2(3,3),c3(3,3,3)
+
+end type 
+
+contains 
+
+ subroutine evaluate_gravity_stack(nodes,x,accel)
+   type(octreenode), intent(inout) :: nodes(:)
+   real, intent(in) :: x(:,:)
+   real, intent(inout) :: accel(:,:)
+   integer :: stacksize, top 
+   type(evaluate_stack_data) :: stack(100000)
+   type(octreenode) :: currentnode,childnode
+   real :: c0,c1(3),c2(3,3),c3(3,3,3),z0(3),z1(3)
+   real :: bodaccel(3),xbod(3)
+   integer :: bodyindex,i,iter
+
+   top = 1
+   stacksize = 1
+   iter = 1
+
+   ! Push the root node 
+   stack(1) % node = nodes(1)
+   stack(1) % z0 = 0.
+   stack(1) % c0 = 0.
+   stack(1) % c1 = 0.
+   stack(1) % c2 = 0.
+   stack(1) % c3 = 0.
+
+   do while (top /= 0.)
+
+    print*, "The current iteration is: ",iter
+    ! POP ITEM FROM STACK 
+    currentnode = stack(top) % node
+    z0 = stack(top) % z0
+    c0 = stack(top) % c0
+    c1 = stack(top) % c1
+    c2 = stack(top) % c2 
+    c3 = stack(top) % c3 
+
+    top = top - 1 
+
+    ! Perform evaluate on popped item 
+
+   z1 = currentnode % centerofmass
+  
+
+  ! TRANSLATE TAYLOR SERIES T0 TO CENTER OF MASS OF A
+  
+  call translate_expansion_center(z0,z1,c0,c1,c2,c3)
+
+  c0 = currentnode % c0 + c0
+  !c0new = c0
+  !print*, "C0: "
+  !print*,c0new
+  c1 = currentnode % c1 + c1
+  !c1new = c1 
+  !print*, "C1: "
+  !print*,c1new
+  !c2new = c2
+  c2 = currentnode % c2 + c2
+  !print*, "C2: "
+  !print*,c2new
+  c3 = currentnode % c3 + c3
+  
+
+  !nochild = node % bodychildpont
+  if (currentnode % isLeaf) then
+  do i=1, 10
+    bodyindex = currentnode % data(i)
+    xbod = x(:,bodyindex)
+   bodaccel = 0.
+   call accel_at_bodypos(xbod,z1,c0,c1,c2,c3,bodaccel)
+   accel(:,bodyindex) = accel(:,bodyindex) + bodaccel
+  enddo 
+ else 
+
+  ! FOR CHILDREN OF A 
+  ! change center of mass
+  z0 = z1
+  
+  do i=1, 8
+
+   if (currentnode % children(i) /= 0 .and. c0 /= 0.) then  
+    print*, "Childnode index: ", currentnode % children(i)
+    childnode = nodes(currentnode % children(i))
+    !nodeindex = node % children(i)
+    !print*, "Node index: ",nodeindex
+    !call evaluate_gravity(childnode,nodes,z0new,c0new,c1new,c2new,c3new,x,accel)
+    top = top + 1 
+
+    ! Push Children onto stack 
+    stack(top) % node = childnode
+    stack(top) % z0 = z0
+    stack(top) % c0 = c0
+    stack(top) % c1 = c1 
+    stack(top) % c2 = c2
+    stack(top) % c3  = c3 
+   endif 
+
+  enddo
+ 
+
+  endif 
+
+    
+
+
+  enddo 
+
+
+ end subroutine evaluate_gravity_stack
 
  recursive subroutine evaluate_gravity(node,nodes,z0,c0,c1,c2,c3,x,accel)
   type(octreenode), intent(inout) :: node, nodes(:)
@@ -10,24 +126,17 @@ module evaluate
   real :: z1(3),xbod(3),bodpot,bodaccel(3),accelbef(3)
   integer :: i,nochild,bodyindex
   real :: c0new, c1new(3), c2new(3,3),c3new(3,3,3),z0new(3)
-  integer  :: nodeindex
+  integer  :: nodeindex,nthreads
   !real :: c0old,c1old(3),c2old(3,3),c3old(3,3,3)
 
   bodpot = 0.
   bodaccel = 0.
+  bodyindex = 0.
 
-  ! TAYLOR SERIES OF CELL A
-  ! TA 
-
-  !print*, nodes(1) % c0
-  !print*, "c0 before"
-  !print*,c0
-  !print*,"c1 before"
-  !print*,c1
-  !print*,"c2 before"
-  !print*,c2
-  !print*,"c3 before"
-  !print*, c3
+  c0new = 0.
+  c1new = 0.
+  c2new = 0.
+  c3new = 0.
 
    print*, "Center of mass (old): ", z0
   ! Get CoM of current node
@@ -36,10 +145,11 @@ module evaluate
    print*, z1
 
    print*, "Node mass: ", node % totalmass
+   print*, "c0 is: ", c0 
 
   ! TRANSLATE TAYLOR SERIES T0 TO CENTER OF MASS OF A
   
-  call translate_expansion_center(z0,z1,c0,c1,c2,c3)
+  if (c0 /= 0. .and. node % totalmass /= 0.) call translate_expansion_center(z0,z1,c0,c1,c2,c3)
 
   !dr = z0-z1
 
@@ -59,6 +169,8 @@ module evaluate
   !print*, "c3 node: "
   !print*, node % c3
 
+
+  if (node % c0 /= 0.) then
   c0new = node % c0 + c0
   !c0new = c0
   !print*, "C0: "
@@ -77,17 +189,26 @@ module evaluate
   !print*, c3new
   ! FOR BODY CHILDREN OF A 
 
+  else
+    c0new = c0
+    c1new = c1
+    c2new = c2
+    c3new = c3 
+  endif 
  !STOP
 
   !nochild = node % bodychildpont
   if (node % isLeaf) then
   do i=1, 10
-    !print*, "Child index: ",i
+    
     !if (node%data(i)==0) then
     !  EXIT
     !endif 
     ! Get the index of the body 
     !bodyindex = node % bodychildren(i)
+
+    if (node % data(i) /= 0 .and. c0new /= 0.) then
+    print*, node % data(i) 
     bodyindex = node % data(i)
     xbod = x(:,bodyindex)
 
@@ -96,18 +217,22 @@ module evaluate
    ! Evaluate TA at body's position
    !call poten_at_bodypos(xbod,z1,c0,c1,c2,c3,bodpot)
    bodaccel = 0.
+   print*, "c0new: ", c0new
    call accel_at_bodypos(xbod,z1,c0new,c1new,c2new,c3new,bodaccel)
 
    ! add to body's potential and acceleration
 
    !poten(bodyindex) = poten(bodyindex) + bodpot
-   !print*, "accel bef:",accel(:,bodyindex)
+   print*, "accel bef:",accel(:,bodyindex)
    !accelbef = accel(:,bodyindex)
    accel(:,bodyindex) = accel(:,bodyindex) + bodaccel
-   !print*, "Accel now: ", accel(:,bodyindex)
+   print*, "Accel now: ", accel(:,bodyindex)
    !print*, "bodaccel: ", bodaccel
    !print*, "delta accel:"
    !print*, accel(:,bodyindex) - accelbef
+
+
+   endif 
 
 
   enddo 
@@ -116,9 +241,10 @@ module evaluate
   ! FOR CHILDREN OF A 
   ! change center of mass
   z0new = z1
+  !!$OMP DO 
   do i=1, 8
 
-   if (node % children(i) /= 0 .and. c0new /= 0.) then  
+  if (node % children(i) /= 0 .and. norm2(nodes(node %children(i)) % centerofmass) /= 0. ) then  
     print*, "Childnode index: ", node % children(i)
     childnode = nodes(node % children(i))
     !nodeindex = node % children(i)
@@ -126,76 +252,14 @@ module evaluate
     call evaluate_gravity(childnode,nodes,z0new,c0new,c1new,c2new,c3new,x,accel)
    endif 
 
-  enddo  
+  enddo
+  !!$OMP ENDDO   
 
   endif 
 
  end subroutine evaluate_gravity
 
-recursive subroutine get_accel_body(node,nodes,x,accel)
- type(octreenode), intent(inout) :: node, nodes(:)
- type(octreenode) :: childnode
- real, intent(inout) :: accel(:,:),x(:,:)
- real :: z1(3),xbod(3),bodaccel(3),c0,c1(3),c2(3,3),c3(3,3,3)
- integer :: bodyindex,i
 
-
- c0 = node % c0
- c1 = node % c1
- c2 = node % c2
- c3 = node % c3 
-
- z1 = node % centerofmass
- if (node % isLeaf) then
-  do i=1, 10
-    !print*, "Child index: ",i
-    !if (node%data(i)==0) then
-    !  EXIT
-    !endif 
-    ! Get the index of the body 
-    !bodyindex = node % bodychildren(i)
-    bodyindex = node % data(i)
-    xbod = x(:,bodyindex)
-
-
-
-   ! Evaluate TA at body's position
-   !call poten_at_bodypos(xbod,z1,c0,c1,c2,c3,bodpot)
-   bodaccel = 0.
-   call accel_at_bodypos(xbod,z1,c0,c1,c2,c3,bodaccel)
-
-   ! add to body's potential and acceleration
-
-   !poten(bodyindex) = poten(bodyindex) + bodpot
-   !print*, "accel bef:",accel(:,bodyindex)
-   !accelbef = accel(:,bodyindex)
-   accel(:,bodyindex) = accel(:,bodyindex) + bodaccel
-   !print*, "Accel now: ", accel(:,bodyindex)
-   !print*, "bodaccel: ", bodaccel
-   !print*, "delta accel:"
-   !print*, accel(:,bodyindex) - accelbef
-
-
-  enddo 
- else 
-
-
-  do i=1, 8
-
-   if (node % children(i) /= 0) then  
-    print*, "Childnode index: ", node % children(i)
-    childnode = nodes(node % children(i))
-    !nodeindex = node % children(i)
-    !print*, "Node index: ",nodeindex
-    call get_accel_body(childnode,nodes,x,accel)
-   endif 
-
-  enddo  
-
-endif 
-
-
-end subroutine get_accel_body
 
 
  subroutine translate_expansion_center(z0,z1,c0,c1,c2,c3)
@@ -222,6 +286,8 @@ end subroutine get_accel_body
   call outer_product1(sep1,sep1,sep2)
   call outer_product2(sep2,sep1,sep3)
 
+  print*, c2 
+
   sep1c2comp(1) = sep1(1)*c2(1,1) + sep1(2)*c2(1,2) + sep1(3)*c2(1,3)
   sep1c2comp(2) = sep1(1)*c2(2,1) + sep1(2)*c2(2,2) + sep1(3)*c2(2,3)
   sep1c2comp(3) = sep1(1)*c2(3,1) + sep1(2)*c2(3,2) + sep1(3)*c2(3,3)
@@ -233,9 +299,9 @@ end subroutine get_accel_body
   print*, sep1c2comp
 
   ! The components of these sums should all have the save order as the coefficent i.e  c0 = scalar, c1 = vector
-  c0 = c0old + dot_product(c1old,sep1) + 0.5*inner_product2(sep2,c2old)+ 1./6.*inner_product3(sep3,c3)
-  c1 = c1old + sep1c2comp + 0.5*inner_product23_to_vec(sep2,c3old)
-  c2 = c2old  + inner_product31_to_2(sep1,c3old)
+  c0 = c0old + dot_product(c1old,sep1) + 0.5*inner_product2(sep2,c2old) !+ 1./6.*inner_product3(sep3,c3)
+  c1 = c1old + sep1c2comp!+ inner_product2_to_vec(sep1,c2) + 0.5*inner_product23_to_vec(sep2,c3old)
+  c2 = c2old !+ inner_product31_to_2(sep1,c3old)
   c3 = c3old
 
  end subroutine translate_expansion_center
@@ -261,7 +327,7 @@ end subroutine get_accel_body
   !accel = accel  !+ (c1 &
   !+ inner_product2_to_vec(sep1,c2)) &
  !+ 0.5*inner_product23_to_vec(sep2,c3)
- accel = accel + c1 + sep1c2comp + 0.5*inner_product23_to_vec(sep2,c3)
+ accel = accel + c1 + sep1c2comp !+ 0.5*inner_product23_to_vec(sep2,c3)
 
  end subroutine accel_at_bodypos
  subroutine poten_at_bodypos(x,com,c0,c1,c2,c3,poten)
@@ -279,7 +345,7 @@ end subroutine get_accel_body
   call outer_product2(sep2,sep1,sep3)
   !print(matmul(RESHAPE(sep1,(/3,1/)),sep2))
 
-  poten = poten -(c0 + dot_product((x-com),c1) + 0.5*inner_product2(sep2,c2) + 1./6.*inner_product3(sep3,c3))
+  poten = poten -(c0 + dot_product((x-com),c1) + 0.5*inner_product2(sep2,c2)) !+ 1./6.*inner_product3(sep3,c3))
  end subroutine poten_at_bodypos
 
  subroutine outer_product1(tens1,tens2,theproduct)

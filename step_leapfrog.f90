@@ -15,6 +15,7 @@ module step_leapfrog
    real, intent(in) :: m(np)
    real, intent(inout) :: dt
    type(octreenode), allocatable, optional, intent(out) :: nodes(:)
+   integer :: endnode
    real :: c0,c1(3),c2(3,3),c3(3,3,3), atest(3,np)
    integer :: i, rootnode
    real :: sumMass, cm(3),rmax
@@ -39,9 +40,9 @@ module step_leapfrog
     a = 0.
     if (present(nodes)) then
         !call cleartree(nodes)
-        call maketree(nodes,x,v,a,np)
+        call maketree(nodes,x,v,m,a,np,endnode)
         call get_com(x,v,m,np,nodes,rootnode,sumMass,cm)
-        call get_accel_test(x,atest,m,np)
+        !call get_accel_test(x,atest,m,np)
         rootnode = 1
         rmax = 0.
         cm = 0.

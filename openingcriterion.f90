@@ -103,7 +103,7 @@ module opening_criterion
  ! Make this recursive 
  RECURSIVE subroutine find_rmax(x,nodes,currentnode,rmax)
  ! This should be run after tree construction
- type(octreenode), intent(out) :: nodes(:)
+ type(octreenode), intent(inout) :: nodes(:)
  integer, intent(out) :: currentnode
  real, intent(out) :: rmax
  real, intent(in) :: x(:,:)
@@ -168,6 +168,7 @@ else
       if (nodes(currentnode)%children(i) .NE. 0) then
          ! get node CoM
          childindex = nodes(currentnode)%children(i)
+         print*, "Child index: ", childindex
          nodecm = nodes(childindex) % centerofmass
          dnode = norm2(nodecm - nodes(currentnode)%centerofmass)
          call find_rmax(x,nodes,nodes(currentnode)%children(i),rmaxsubnode)

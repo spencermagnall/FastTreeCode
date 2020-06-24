@@ -26,12 +26,12 @@ module potendirect
 
   allocate(particles(part2size+10))
   particles = [particlesindex1,particlesindex2]
-  print*,"particles: ", particles 
+  !print*,"particles: ", particles 
 
   !print*, "Direct Sum"
   !print*, x(:,:)
 
-  open(unit=56,file="interactions.txt")
+  !open(unit=56,file="interactions.txt")
   ! Put all the particles into one list 
 
   !h = 0.1
@@ -56,7 +56,7 @@ module potendirect
      !print*,"Accel direct: ", a(:,indexi)
      !print*, "A mag: ", sqrt(dot_product(m(indexj)*(1/((r2*r)))*dx, m(indexj)*(1/((r2*r)))*dx))
      !if (isnan(a(2,indexi))) stop 
-     write(56,*) "Particle1 ",indexi, " Particle2 ",indexj, "Accel: ", m(indexj)*(1/((r2 + h**2)**1.5))*dx
+     !write(56,*) "Particle1 ",indexi, " Particle2 ",indexj, "Accel: ", m(indexj)*(1/((r2 + h**2)**1.5))*dx
     endif
   enddo
  enddo
@@ -98,7 +98,7 @@ subroutine get_accel_leafnode(x,a,m,np,particlesindex1,particlesindex2)
      !print*,"Accel direct: ", a(:,indexi)
      !print*, "A mag: ", sqrt(dot_product(m(indexj)*(1/((r2*r)))*dx, m(indexj)*(1/((r2*r)))*dx))
      !if (isnan(a(2,indexi))) stop 
-     write(56,*) "Particle1 ",indexi, " Particle2 ",indexj, "Accel: ", m(indexj)*(1/((r2 + h**2)**1.5))*dx
+     !write(56,*) "Particle1 ",indexi, " Particle2 ",indexj, "Accel: ", m(indexj)*(1/((r2 + h**2)**1.5))*dx
     endif
   enddo
  enddo

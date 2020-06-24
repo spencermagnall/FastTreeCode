@@ -1,9 +1,11 @@
 program nbody
+      use OMP_LIB
       use octree
       use delta_t
       use contrivedtree
       !use setup_binary
-      use plummer_dist
+      !use plummer_dist
+      use cold_collapse
       use step_leapfrog
       use output
       !use poten
@@ -15,9 +17,11 @@ program nbody
       use testgravity
       use testdirect
       use potendirect
+      use errors
+      use read_dump
       implicit none 
       type(octreenode), allocatable :: nodes(:)
-      integer, parameter :: nopart = 100
+      integer, parameter :: nopart = 1000 
       real :: x(3, nopart)
       real :: v(3, nopart)
       real :: a(3, nopart)
@@ -32,8 +36,8 @@ program nbody
       real :: angmom(3),rmax
       integer :: rootnode,i,node1,node2
       real :: sumMass, cm(3)
-      real :: c0,c1(3),c2(3,3),c3(3,3,3)
-      integer :: interactionlist(nopart,nopart)
+      real :: c0,c1(3),c2(3,3),c3(3,3,3),rms, boxsize 
+      integer :: interactionlist(nopart,nopart), endnode
 
 
       
@@ -41,7 +45,9 @@ program nbody
       c1 = 0.
       c2 = 0.
       c3 = 0.
+    
 
+      !call read_ascii(x,v,m,nopart,"cosmoinput")
       call test_gravity()
       call test_coeff_trans()
       !STOP
@@ -65,10 +71,10 @@ program nbody
 
       !STOP
       t = 0
-      dt = 0.01
+      dt = 0.1
       iter = 0 
       tmax = 10
-      output_freq = 100 
+      output_freq = 1 
       rootNode = 1
       sumMass = 0.0
       cm = 0.0
@@ -78,6 +84,8 @@ program nbody
       
       ! PUT PARTICLE SETUP HERE
       call init(x,v,m,nopart)
+      call get_optimal_boxsize(x,m,nopart,boxsize,center)
+      !STOP
       call get_accel_test(x,atest,m,nopart)
       print*, "Finished setup!"
       !call test_direct(x,m,nopart)
@@ -85,11 +93,14 @@ program nbody
       !call write_output(x,v,a,m,nopart,t)
       !STOP
       !call maketreecontrived(nodes,x,v,a,nopart)
-      call maketree(nodes,x,v,a,nopart)
+      call maketree(nodes,x,v,m,a,nopart,endnode)
       print*, "Finished tree build!"
+      print*, "Endnode is: ", endnode
+      !STOP
       call print_tree(nodes,x,0,1)
       !STOP 
       call get_com(x,v,m,nopart,nodes,rootNode,sumMass,cm)
+      print*, "Get com finished"
       ! Find rmax for each node
       rootNode = 1
       rmax = 0.0
@@ -101,6 +112,7 @@ program nbody
       node1 = 1
       node2 = 1
       call interact(node1,node2,nodes,x,m,a, nopart)
+      !STOP
       !print*,nodes(1) % c3
       !print*, "Accel:"
       !print*, a
@@ -112,6 +124,8 @@ program nbody
       c3 = 0.
       cm = 0.
       call evaluate_gravity(nodes(1),nodes,cm,c0,c1,c2,c3,x,a)
+      !STOP
+      !call evaluate_gravity_stack(nodes,x,a)
       !call get_accel_body(nodes(1),nodes,x,a)
       print*,"Accel: "
       do i=1, nopart
@@ -124,7 +138,10 @@ program nbody
       print*,"Delta accel"
       do i=1,nopart
         print*,atest(:,i) - a(:,i)
-      enddo 
+      enddo
+      call get_rms(a,atest,nopart,rms)
+      print*,"Root mean squared error: "
+      print*,rms
       !STOP
       !call get_accel(x,a,m,nopart)
       !STOP
@@ -139,7 +156,7 @@ program nbody
        pmag = sqrt(pmag)
         write(66,*) "t "," pmag ", " angm x ", " angm y ", " angm z ", " deltap"
         write(66,*) t,  pmag, angmom, 0.0
-      ! STOP
+       !STOP
       do while(t < tmax)
             iter  = iter + 1
 

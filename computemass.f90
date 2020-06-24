@@ -15,6 +15,8 @@ RECURSIVE subroutine get_com(x,v,m,np,nodes,currentnode,sumMass,cm)
  
  !print*, "Mass: ", m
  write(*, *) "CurrentNode: ", currentnode
+ print*, "Summass"
+ print*, "where are we "
  ! BASE CASE 
  ! If we have a leaf node 
  massChild = 0.0
@@ -105,5 +107,41 @@ RECURSIVE subroutine get_com(x,v,m,np,nodes,currentnode,sumMass,cm)
 
 
 end subroutine get_com
+
+subroutine compute_quads(x,m,np,nodes,currentnode,endnode)
+  integer, intent(in) :: np,endnode
+  real, intent(in) :: x(3,np), m(np)
+  type(octreenode), intent(inout) :: nodes(:)
+  integer, intent(inout) :: currentnode
+  real :: quads(3,3), dx(3)
+  integer :: i,j
+
+  quads = 0.
+
+  do i=1, endnode
+    ! For all bodychildren of the node 
+    do j=1, nodes(i) % bodychildpont
+       ! Particle distance from center of mass 
+       dx = x(:, nodes(i) % bodychildren(j)) - nodes(i) % centerofmass
+       
+       ! UNROLLED QUADS, DONT NEED ALL OF THESE BECAUSE OF SYM
+       quads(1,1) = quads(1,1) + m(j)*(3.*dx(1)*dx(1) - norm2(dx))
+       quads(1,2) = quads(1,2) + m(j)*(3.*dx(1)*dx(2))
+       quads(1,3) = quads(1,3) + m(j)*(3.*dx(1)*dx(3))
+       quads(2,1) = quads(2,1) + m(j)*(3.*dx(2)*dx(1))
+       quads(2,2) = quads(2,2) + m(j)*(3.*dx(2)*dx(2) - norm2(dx))
+       quads(3,3) = quads(3,3) + m(j)*(3.*dx(3)*dx(3) - norm2(dx))
+       quads(3,2) = quads(3,2) + m(j)*(3.*dx(3)*dx(2))
+       quads(3,1) = quads(3,1) + m(j)*(3.*dx(3)*dx(1))
+
+
+    enddo 
+
+  enddo 
+
+
+  
+
+end subroutine compute_quads
  
 end module computemass

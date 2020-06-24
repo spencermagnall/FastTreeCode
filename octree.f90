@@ -5,20 +5,21 @@ module octree
  ! the opening criterion 
  real, public :: theta = 0.5
 
- integer:: maxnodes = 10000
+ integer:: maxnodes = 1000000
  integer :: totalnodes  = 0
 
  public :: maketree
 
  contains 
 
-  subroutine maketree(nodes,x,v,a,np)
+  subroutine maketree(nodes,x,v,m,a,np,endnode)
    integer, intent(in) :: np
    type(octreenode), allocatable, intent(out) :: nodes(:)
-   real, intent(in) :: x(:,:), v(:,:), a(:,:)
+   real, intent(in) :: x(:,:), v(:,:), a(:,:), m(np)
    integer :: i
    integer :: currentnode
-   integer :: endnode
+   integer, intent(out) :: endnode
+   real :: origin(3), boxsize
 
    ! allocate nodes for tree
    allocate(nodes(maxnodes))
@@ -29,11 +30,12 @@ module octree
     call null_node(nodes(i))
   enddo
 
-
-
+   ! Find the boxsize and origin for the tree 
+   call get_optimal_boxsize(x,m,np,boxsize,origin)
    ! setup the root node
-   call new_node(nodes(1),100000.,(/0.0,0.0,0.0/))
-   
+   call new_node(nodes(1),boxsize,origin)
+
+
 
    ! endnode is now root
    endnode = 1
@@ -310,6 +312,8 @@ module octree
       write(*,*) "Octant:", octant
       child = nodes(currentnode) % children(octant)
       write(*,*) "CHild: ", child
+      write(*,*) "Node Children: ", nodes(currentnode) % children
+      write(*,*) "Bodychild pont", nodes(currentnode) % bodychildpont
 
       ! Add particle to body children
       call insert_bodychild(nodes(currentnode),currentparticle)
@@ -403,7 +407,7 @@ module octree
   type(octreenode), allocatable, intent(in) :: nodes(:)
   real, intent(in) :: x(:,:)
   integer, intent(in) :: depth, currentnode
-  integer :: i, newdepth,j
+  integer :: i, newdepth,j,bodychildpont
 
   write(*,*) "Depth: ", depth
   write(*,*) "Isleaf: ",nodes(currentnode) % isLeaf 
@@ -421,7 +425,8 @@ module octree
   enddo 
 
   print*, "Body Children: "
-  do j=1, 2000
+  bodychildpont = nodes(currentnode) % bodychildpont
+  do j=1, bodychildpont
         if (nodes(currentnode) % bodychildren(j) /= 0) then
 
           write(*,*) nodes(currentnode) % bodychildren(j)
@@ -455,6 +460,9 @@ subroutine insert_bodychild(currentnode,currentparticle)
   integer  :: bodychildindex
 
   ! INSERT 
+  if (currentnode % bodychildpont == size(currentnode % bodychildren)) then
+    call resize_bodychildren(currentnode)
+  endif 
   currentnode % bodychildpont = currentnode % bodychildpont + 1
   bodychildindex = currentnode % bodychildpont 
   currentnode % bodychildren(bodychildindex) = currentparticle 
@@ -462,6 +470,44 @@ subroutine insert_bodychild(currentnode,currentparticle)
 
 
 end subroutine insert_bodychild
+
+subroutine get_optimal_boxsize(x,m,np,boxsize,origin)
+  integer,intent(in) :: np
+  real, intent(in) :: x(3,np), m(np)
+  real, intent(out) ::boxsize, origin(3)
+  real :: totalmass, cm(3),rmax
+  integer :: i
+
+  rmax = 0.
+
+  ! get the total mass
+  totalmass = sum(m)
+
+  do i=1, np
+    cm = cm +  x(:,i)*m(i)
+  enddo 
+
+  cm = cm/totalmass
+  ! Set the origin to the centerofmass 
+  origin = cm
+
+  ! Find the particle with largest r from cent 
+
+  do i=1, np
+    if ((abs(norm2(x(:,i) - origin)) > rmax )) then
+      rmax = abs(norm2(x(:,i) - origin))
+    endif 
+  enddo
+
+  ! box size is the diameter of this radius 
+  boxsize = 2 * rmax
+
+  print*, "Box size is: ", boxsize
+  print*, "Origin is: ", origin
+
+
+
+end subroutine get_optimal_boxsize
 
 end module octree
   
