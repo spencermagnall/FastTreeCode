@@ -19,12 +19,17 @@ module opening_criterion
   ! Get the magnitude of the difference between CoM's
   dx = cm1 - cm2
   print*,dx
-  zmag = norm2(dx)
+  zmag = sqrt(dx(1)*dx(1) + dx(2)*dx(2)+ dx(3)*dx(3))
 
   ! get the rmax for nodes 1 and 2
   rmax1 = node1 % rmax
   rmax2 = node2 % rmax 
+  !call distance_to_corner(node1,rmax1)
+  !call distance_to_corner(node2,rmax2)
 
+
+  print*, "Rmax values: "
+  print*, rmax1, rmax2
 
   print*,"Zmag: ", zmag
   print*, "rmax1 + rmax2/theta: ", (rmax1 + rmax2)/theta
@@ -173,7 +178,7 @@ else
          dnode = norm2(nodecm - nodes(currentnode)%centerofmass)
          call find_rmax(x,nodes,nodes(currentnode)%children(i),rmaxsubnode)
          ! EQ [3] from Benz et al. 1990
-         if (rmaxsubnode + dnode .LT. rmaxcurrent) then 
+         if (rmaxsubnode + dnode < rmaxcurrent) then 
             rmaxcurrent = rmaxsubnode + dnode
             write(*,*) "rmaxcurrent: ",rmaxcurrent
          endif

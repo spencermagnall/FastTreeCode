@@ -32,6 +32,8 @@ module octree
 
    ! Find the boxsize and origin for the tree 
    call get_optimal_boxsize(x,m,np,boxsize,origin)
+   print*, boxsize
+
    ! setup the root node
    call new_node(nodes(1),boxsize,origin)
 
@@ -479,6 +481,7 @@ subroutine get_optimal_boxsize(x,m,np,boxsize,origin)
   integer :: i
 
   rmax = 0.
+  cm = 0.
 
   ! get the total mass
   totalmass = sum(m)

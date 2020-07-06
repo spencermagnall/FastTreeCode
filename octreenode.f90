@@ -52,7 +52,7 @@ module octreetype
     real :: c3(3,3,3)
 
     ! The quadrupole moment of this node 
-    real :: quads(3,3)
+    real :: quads(6)
 
 
     ! Body children for the node
@@ -99,6 +99,7 @@ module octreetype
     this % c2 = 0 
     this % c3 = 0
     this % quads = 0. 
+    this % fnode = 0.
     end subroutine null_node
 
     logical function node_full(this) result(flag)

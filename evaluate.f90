@@ -20,7 +20,7 @@ contains
    type(evaluate_stack_data) :: stack(100000)
    type(octreenode) :: currentnode,childnode
    real :: c0,c1(3),c2(3,3),c3(3,3,3),z0(3),z1(3)
-   real :: bodaccel(3),xbod(3)
+   real :: bodaccel(3),xbod(3),fnode(20),fno,bodpot,dx(3)
    integer :: bodyindex,i,iter
 
    top = 1
@@ -38,6 +38,7 @@ contains
    do while (top /= 0.)
 
     print*, "The current iteration is: ",iter
+    iter = iter + 1 
     ! POP ITEM FROM STACK 
     currentnode = stack(top) % node
     z0 = stack(top) % z0
@@ -54,7 +55,7 @@ contains
   
 
   ! TRANSLATE TAYLOR SERIES T0 TO CENTER OF MASS OF A
-  
+  print*, "Translating expansion: "
   call translate_expansion_center(z0,z1,c0,c1,c2,c3)
 
   c0 = currentnode % c0 + c0
@@ -75,11 +76,19 @@ contains
   !nochild = node % bodychildpont
   if (currentnode % isLeaf) then
   do i=1, 10
-    bodyindex = currentnode % data(i)
-    xbod = x(:,bodyindex)
+
+  if (currentnode % data(i) /= 0 .and. c0 /= 0.) then
+   bodyindex = currentnode % data(i)
+   xbod = x(:,bodyindex)
+   dx = xbod - z1 
    bodaccel = 0.
+   fnode = currentnode % fnode
+   print*,"calculated accel: "
    call accel_at_bodypos(xbod,z1,c0,c1,c2,c3,bodaccel)
+   print*,bodaccel
+   !expand_fgrav_in_taylor_series(fnode,dx(1),dx(2),dx(3),bodaccel(1),bodaccel(2),bodaccel(3),bodpot)
    accel(:,bodyindex) = accel(:,bodyindex) + bodaccel
+  endif 
   enddo 
  else 
 
@@ -89,7 +98,9 @@ contains
   
   do i=1, 8
 
-   if (currentnode % children(i) /= 0 .and. c0 /= 0.) then  
+
+
+   if (currentnode % children(i) /= 0) then  
     print*, "Childnode index: ", currentnode % children(i)
     childnode = nodes(currentnode % children(i))
     !nodeindex = node % children(i)
@@ -119,14 +130,21 @@ contains
 
  end subroutine evaluate_gravity_stack
 
- recursive subroutine evaluate_gravity(node,nodes,z0,c0,c1,c2,c3,x,accel)
-  type(octreenode), intent(inout) :: node, nodes(:)
+
+ ! BE VERY CAREFUL WITH YOUR RECUSRIVE VARIABLES 
+
+ recursive subroutine evaluate_gravity(nodeindex,nodes,z0,c0,c1,c2,c3,x,accel,asum)
+  type(octreenode), intent(inout) :: nodes(:)
   real,intent(inout) :: c0,c1(3),c2(3,3),c3(3,3,3),z0(3),accel(:,:),x(:,:)!,c0total(:),c1(3,:),c2(3,3,:),c3(3,3,3,:)
-  type(octreenode) :: childnode
+  real, intent(inout) :: asum(3) 
+  integer, intent(inout) :: nodeindex
+  integer :: childnode
   real :: z1(3),xbod(3),bodpot,bodaccel(3),accelbef(3)
   integer :: i,nochild,bodyindex
-  real :: c0new, c1new(3), c2new(3,3),c3new(3,3,3),z0new(3)
-  integer  :: nodeindex,nthreads
+  real :: c0new, c1new(3), c2new(3,3),c3new(3,3,3),z0new(3),fnode(20),dx(3),m,nodemass
+  real :: c0copy,c1copy(3),c2copy(3,3),c3copy(3,3,3)
+  integer  :: nthreads
+  real :: nodeaccelsum(3)
   !real :: c0old,c1old(3),c2old(3,3),c3old(3,3,3)
 
   bodpot = 0.
@@ -137,19 +155,41 @@ contains
   c1new = 0.
   c2new = 0.
   c3new = 0.
+  nodeaccelsum = 0.
+  childnode = 0
+  z1 = 0.
+  xbod = 0.
+  bodpot = 0.
+  bodaccel = 0.
+  accelbef = 0.
+  i = 0
+  nochild = 0
+  bodyindex = 0
+  z0new = 0.
+  fnode = 0.
+  dx = 0. 
+  nodemass = 0.
+  m = 1./(size(accel)/3.)
 
    print*, "Center of mass (old): ", z0
   ! Get CoM of current node
-   z1 = node % centerofmass
+   z1 = nodes(nodeindex) % centerofmass
    print*, "Center of Mass new: "
    print*, z1
 
-   print*, "Node mass: ", node % totalmass
-   print*, "c0 is: ", c0 
+   nodemass = nodes(nodeindex) % totalmass
+   print*, "Node mass: ", nodes(nodeindex) % totalmass
+   print*, "c1 is: ", c1
 
   ! TRANSLATE TAYLOR SERIES T0 TO CENTER OF MASS OF A
   
-  if (c0 /= 0. .and. node % totalmass /= 0.) call translate_expansion_center(z0,z1,c0,c1,c2,c3)
+  ! COPY VALUES SO THEY ARENT CHANGED BY TRANSLATION
+  c0new = c0
+  c1new = c1
+  c2new = c2
+  c3new = c3 
+  call translate_expansion_center(z0,z1,c0new,c1new,c2new,c3new)
+  !if (c0 /= 0. .and. nodes(nodeindex) % totalmass /= 0.) call translate_expansion_center(z0,z1,c0,c1,c2,c3)
 
   !dr = z0-z1
 
@@ -162,43 +202,43 @@ contains
   !print*, "Node taylor coeffs: "
   !print*, "c0 node: "
   !print*, node % c0 
-  print*, "c1 : "
-  print*, c1
+  print*, "c1 node: "
+  print*, nodes(nodeindex) %c1 * nodes(nodeindex) % totalmass 
   !print*, "c2 node: "
-  !print*, node % c2
+  !print*, nodes(nodeindex) % c2
   !print*, "c3 node: "
-  !print*, node % c3
+  !print*, nodes(nodeindex) % c3
 
 
-  if (node % c0 /= 0.) then
-  c0new = node % c0 + c0
+  !if (node % c0 /= 0.) then
+  c0new = (nodes(nodeindex) % c0) + c0new
   !c0new = c0
   !print*, "C0: "
   !print*,c0new
-  c1new = node % c1 + c1
+  c1new = (nodes(nodeindex) % c1) + c1new
   !c1new = c1 
   !print*, "C1: "
   !print*,c1new
   !c2new = c2
-  c2new = node % c2 + c2
+  c2new = (nodes(nodeindex) % c2) + c2new
   !print*, "C2: "
   !print*,c2new
-  c3new = node % c3 + c3
+  c3new = (nodes(nodeindex) % c3) + c3new
   !c3new = c3 
   !print*, "C3: "
   !print*, c3new
   ! FOR BODY CHILDREN OF A 
 
-  else
-    c0new = c0
-    c1new = c1
-    c2new = c2
-    c3new = c3 
-  endif 
+  !else
+  !  c0new = c0
+  !  c1new = c1
+  !  c2new = c2
+  !  c3new = c3 
+  !endif 
  !STOP
 
   !nochild = node % bodychildpont
-  if (node % isLeaf) then
+  if (nodes(nodeindex) % isLeaf) then
   do i=1, 10
     
     !if (node%data(i)==0) then
@@ -207,9 +247,10 @@ contains
     ! Get the index of the body 
     !bodyindex = node % bodychildren(i)
 
-    if (node % data(i) /= 0 .and. c0new /= 0.) then
-    print*, node % data(i) 
-    bodyindex = node % data(i)
+    if (nodes(nodeindex) % data(i) /= 0 .and. c0new /= 0.) then
+    !print*, nodes(nodeindex) % data(i) 
+    bodyindex = nodes(nodeindex) % data(i)
+    !print*, "Bodyindex: ",bodyindex
     xbod = x(:,bodyindex)
 
 
@@ -218,6 +259,12 @@ contains
    !call poten_at_bodypos(xbod,z1,c0,c1,c2,c3,bodpot)
    bodaccel = 0.
    print*, "c0new: ", c0new
+   dx = xbod - z1 
+   bodaccel = 0.
+   !fnode = node % fnode
+   !call accel_at_bodypos(xbod,z1,c0,c1,c2,c3,bodaccel)
+   !call expand_fgrav_in_taylor_series(fnode,dx(1),dx(2),dx(3),bodaccel(1),bodaccel(2),bodaccel(3),bodpot)
+   !accel(:,bodyindex) = accel(:,bodyindex) + bodaccel
    call accel_at_bodypos(xbod,z1,c0new,c1new,c2new,c3new,bodaccel)
 
    ! add to body's potential and acceleration
@@ -225,34 +272,66 @@ contains
    !poten(bodyindex) = poten(bodyindex) + bodpot
    print*, "accel bef:",accel(:,bodyindex)
    !accelbef = accel(:,bodyindex)
+   !accel(:,bodyindex) = accel(:,bodyindex) + c1 
    accel(:,bodyindex) = accel(:,bodyindex) + bodaccel
    print*, "Accel now: ", accel(:,bodyindex)
+   !asum = asum + bodaccel*m
+   nodeaccelsum = nodeaccelsum + bodaccel*m
+   !print*, "Asum: ", asum
    !print*, "bodaccel: ", bodaccel
    !print*, "delta accel:"
    !print*, accel(:,bodyindex) - accelbef
+
+    
 
 
    endif 
 
 
   enddo 
+  asum = asum + nodeaccelsum
+  print*,"Force sum: ", asum
+  print*, "Part accelsum: ",nodeaccelsum
+  print*, "c1: ", c1new * nodes(nodeindex) % totalmass   
+  write(88,*) "Node index: ", nodeindex, " Force sum: ", c1new * nodes(nodeindex) % totalmass, "Part accelsum: ",nodeaccelsum, &
+   "Center of mass: ", nodes(nodeindex) %centerofmass, "Node mass: ", nodes(nodeindex) % totalmass
  else 
 
   ! FOR CHILDREN OF A 
   ! change center of mass
   z0new = z1
   !!$OMP DO 
+  print*,"Reached this point"
+  if (nodeindex == 1) then 
+    open(88,file="forcesums.txt",position="append")
+  endif 
+  write(88,*) "Node index: ", nodeindex, " Force sum: ", c1new, &
+   "Center of mass: ", nodes(nodeindex) %centerofmass, "Node mass: ", nodes(nodeindex) % totalmass, &
+   "c2: ", nodes(nodeindex) % c2 
+  
+  !close(88)
   do i=1, 8
-
-  if (node % children(i) /= 0 .and. norm2(nodes(node %children(i)) % centerofmass) /= 0. ) then  
-    print*, "Childnode index: ", node % children(i)
-    childnode = nodes(node % children(i))
+    print*, "Childnode index: ", nodes(nodeindex) % children(i)
+    print*, "Has c1 changed: ",c1new
+    print*, "Has z0new changed: ",z0new
+  if (nodes(nodeindex) % children(i) /= 0 .and. norm2(nodes(nodes(nodeindex) %children(i)) % centerofmass) /= 0. ) then
+      
+    print*, "Childnode index: ", nodes(nodeindex) % children(i)
+    childnode = nodes(nodeindex) % children(i)
+    c1copy = c1new 
     !nodeindex = node % children(i)
     !print*, "Node index: ",nodeindex
-    call evaluate_gravity(childnode,nodes,z0new,c0new,c1new,c2new,c3new,x,accel)
+    call evaluate_gravity(childnode,nodes,z0new,c0new,c1new,c2new,c3new,x,accel,asum)
+    print*, nodes(nodeindex) % children(i)
+    c1new = c1copy 
    endif 
 
+   !if (nodeindex == 1) stop 
+
   enddo
+  !stop 
+  write(88,*) "Asum after summing: ",asum
+  asum = 0.
   !!$OMP ENDDO   
 
   endif 
@@ -267,7 +346,7 @@ contains
   real, intent(inout) :: c0, c1(3), c2(3,3), c3(3,3,3)
   real :: c0old, c1old(3), c2old(3,3), c3old(3,3,3)
   real :: sep1(3), sep2(3,3), sep3(3,3,3)
-  real :: sep1c2comp(3)
+  real :: sep1c2comp(3), sep2c3comp(3), sep1c3comp(3,3)
   
   c0old = c0
   c1old = c1
@@ -275,33 +354,59 @@ contains
   c3old = c3
   !print*, "c0"
   !print*, c0old
-  !print*, "c1"
-  !print*, c1old
-  !print*, "c2"
-  !print*, c2old
+  print*, "c1"
+  print*, c1old
+  print*, "c2"
+  print*, c2old
   !print*, "c3"
   !print*, c3old(2,1,1)
-
-  sep1 = z1-z0
+  sep1 = 0.
+  sep1 = z1 - z0
+  print*, "sep1: ", sep1
   call outer_product1(sep1,sep1,sep2)
   call outer_product2(sep2,sep1,sep3)
 
-  print*, c2 
+  !print*, c2 
 
   sep1c2comp(1) = sep1(1)*c2(1,1) + sep1(2)*c2(1,2) + sep1(3)*c2(1,3)
   sep1c2comp(2) = sep1(1)*c2(2,1) + sep1(2)*c2(2,2) + sep1(3)*c2(2,3)
   sep1c2comp(3) = sep1(1)*c2(3,1) + sep1(2)*c2(3,2) + sep1(3)*c2(3,3)
 
+
+  sep2c3comp(1) = sep1(1)*(sep1(1)*c3(1,1,1) + sep1(2)*c3(1,1,2) + sep1(3)*c3(1,1,3)) &
+                + sep1(2)*(sep1(1)*c3(1,2,1)+ sep1(2)*c3(1,2,2) + sep1(3)*c3(1,2,3)) &
+                + sep1(3)*(sep1(1)*c3(1,3,1)+ sep1(2)*c3(1,3,2) + sep1(3)*c3(1,3,3))
+
+  sep2c3comp(2) = sep1(1)*(sep1(1)*c3(2,1,1) + sep1(2)*c3(2,1,2) + sep1(3)*c3(2,1,3)) &
+                + sep1(2)*(sep1(1)*c3(2,2,1)+ sep1(2)*c3(2,2,2) + sep1(3)*c3(2,2,3)) &
+                + sep1(3)*(sep1(1)*c3(2,3,1)+ sep1(2)*c3(2,3,2) + sep1(3)*c3(2,3,3))
+
+  sep2c3comp(3) = sep1(1)*(sep1(1)*c3(3,1,1) + sep1(2)*c3(3,1,2) + sep1(3)*c3(3,1,3)) &
+                + sep1(2)*(sep1(1)*c3(3,2,1)+ sep1(2)*c3(3,2,2) + sep1(3)*c3(3,2,3)) &
+                + sep1(3)*(sep1(1)*c3(3,3,1)+ sep1(2)*c3(3,3,2) + sep1(3)*c3(3,3,3))
+
+
+  sep1c3comp(1,1) = sep1(1)*c3(1,1,1) + sep1(2)*c3(1,1,2) + sep1(3)*c3(1,1,3)
+  sep1c3comp(1,2) = sep1(1)*c3(1,2,1) + sep1(2)*c3(1,2,2) + sep1(3)*c3(1,2,3)
+  sep1c3comp(1,3) = sep1(1)*c3(1,3,1) + sep1(2)*c3(1,3,2) + sep1(3)*c3(1,3,3)
+  sep1c3comp(2,1) = sep1(1)*c3(2,1,1) + sep1(2)*c3(2,1,2) + sep1(3)*c3(2,1,3)
+  sep1c3comp(2,2) = sep1(1)*c3(2,2,1) + sep1(2)*c3(2,2,2) + sep1(3)*c3(2,2,3)
+  sep1c3comp(2,3) = sep1(1)*c3(2,3,1) + sep1(2)*c3(2,3,2) + sep1(3)*c3(2,3,3)
+  sep1c3comp(3,1) = sep1(1)*c3(3,1,1) + sep1(2)*c3(3,1,2) + sep1(3)*c3(3,1,3)
+  sep1c3comp(3,2) = sep1(1)*c3(3,2,1) + sep1(2)*c3(3,2,2) + sep1(3)*c3(3,2,3)
+  sep1c3comp(3,3) = sep1(1)*c3(3,3,1) + sep1(2)*c3(3,3,2) + sep1(3)*c3(3,3,3)
+
   !print*, "Second term value: "
   !print*, 0.5*inner_product2(sep2,c2old)
   !print*, 0.5*dot_product(sep2,c2old)
-  print*, "C2 translated"
-  print*, sep1c2comp
+  !print*, "C2 translated"
+  !print*, sep1c2comp
 
   ! The components of these sums should all have the save order as the coefficent i.e  c0 = scalar, c1 = vector
-  c0 = c0old + dot_product(c1old,sep1) + 0.5*inner_product2(sep2,c2old) !+ 1./6.*inner_product3(sep3,c3)
-  c1 = c1old + sep1c2comp!+ inner_product2_to_vec(sep1,c2) + 0.5*inner_product23_to_vec(sep2,c3old)
-  c2 = c2old !+ inner_product31_to_2(sep1,c3old)
+  c0 = c0old + dot_product(c1old,sep1) !+ 0.5*inner_product2(sep2,c2old) + 1./6.*inner_product3(sep3,c3)
+  c1 = c1old + sep1c2comp !+ 0.5*sep2c3comp
+  !print*, "c1 is: ",c1
+  c2 = c2old !+ sep1c3comp !+ inner_product31_to_2(sep1,c3old)
   c3 = c3old
 
  end subroutine translate_expansion_center
@@ -311,23 +416,35 @@ contains
   real, intent(in) :: x(3),com(3)
   real, intent(in) :: c0,c1(3),c2(3,3),c3(3,3,3)
   real :: sep1(3), sep2(3,3) !, sep3(3,3,3)
-  real :: sep1c2comp(3),sep2c3comp
+  real :: sep1c2comp(3),sep2c3comp(3)
 
   ! The N-fold outer products of the seperation
-  sep1 = x-com 
+  sep1 = x - com 
 
   ! Replace outer product by matrix mul
   !sep2 = matmul(RESHAPE(sep1,(/3,1/)), RESHAPE(sep1,(/1,3/)))
-  call outer_product1(sep1,sep1,sep2)
+  !call outer_product1(sep1,sep1,sep2)
 
   sep1c2comp(1) = sep1(1)*c2(1,1) + sep1(2)*c2(1,2) + sep1(3)*c2(1,3)
   sep1c2comp(2) = sep1(1)*c2(2,1) + sep1(2)*c2(2,2) + sep1(3)*c2(2,3)
-  sep1c2comp(3) = sep1(1)*c2(3,1) + sep1(2)*c2(3,2) + sep1(3)*c2(3,3)
+  sep1c2comp(3) = sep1(1)*c2(3,1) + sep1(3)*c2(3,2) + sep1(3)*c2(3,3)
+
+  sep2c3comp(1) = sep1(1)*(sep1(1)*c3(1,1,1) + sep1(2)*c3(1,1,2) + sep1(3)*c3(1,1,3)) &
+                + sep1(2)*(sep1(1)*c3(1,2,1)+ sep1(2)*c3(1,2,2) + sep1(3)*c3(1,2,3)) &
+                + sep1(3)*(sep1(1)*c3(1,3,1)+ sep1(2)*c3(1,3,2) + sep1(3)*c3(1,3,3))
+
+  sep2c3comp(2) = sep1(1)*(sep1(1)*c3(2,1,1) + sep1(2)*c3(2,1,2) + sep1(3)*c3(2,1,3)) &
+                + sep1(2)*(sep1(1)*c3(2,2,1)+ sep1(2)*c3(2,2,2) + sep1(3)*c3(2,2,3)) &
+                + sep1(3)*(sep1(1)*c3(2,3,1)+ sep1(2)*c3(2,3,2) + sep1(3)*c3(2,3,3))
+
+  sep2c3comp(3) = sep1(1)*(sep1(1)*c3(3,1,1) + sep1(2)*c3(3,1,2) + sep1(3)*c3(3,1,3)) &
+                + sep1(2)*(sep1(1)*c3(3,2,1)+ sep1(2)*c3(3,2,2) + sep1(3)*c3(3,2,3)) &
+                + sep1(3)*(sep1(1)*c3(3,3,1)+ sep1(2)*c3(3,3,2) + sep1(3)*c3(3,3,3))
 
   !accel = accel  !+ (c1 &
   !+ inner_product2_to_vec(sep1,c2)) &
  !+ 0.5*inner_product23_to_vec(sep2,c3)
- accel = accel + c1 + sep1c2comp !+ 0.5*inner_product23_to_vec(sep2,c3)
+ accel = c1 + sep1c2comp  !+ 0.5*sep2c3comp !+ 0.5*inner_product23_to_vec(sep2,c3)
 
  end subroutine accel_at_bodypos
  subroutine poten_at_bodypos(x,com,c0,c1,c2,c3,poten)
@@ -337,7 +454,7 @@ contains
   real :: sep1(3), sep2(3,3), sep3(3,3,3)
 
   ! The N-fold outer products of the seperation
-  sep1 = x - com
+  sep1 = x - com 
 
   ! Replace outer product by matrix mul
   !sep2 = matmul(RESHAPE(sep1,(/3,1/)), RESHAPE(sep1,(/1,3/)))
@@ -455,7 +572,7 @@ contains
   do k=1,3
     do j=1,3
       do i=1,3
-        thetens(i,j) = thetens(i,j) + tens2(i,j,k)*tens1(k)
+        thetens(i,j) = thetens(i,j) + tens1(k)* tens2(i,j,k)
 
       enddo 
     enddo 
@@ -488,8 +605,8 @@ subroutine expand_fgrav_in_taylor_series(fnode,dx,dy,dz,fxi,fyi,fzi,poti)
  fxi = fnode(1)
  fyi = fnode(2)
  fzi = fnode(3)
- print*, "Correct components: "
- print*, fnode(4),fnode(5),fnode(6),fnode(7),fnode(8),fnode(9)
+ !print*, "Correct components: "
+ !print*, fnode(4),fnode(5),fnode(6),fnode(7),fnode(8),fnode(9)
  dfxx = fnode(4)
  dfxy = fnode(5)
  dfxz = fnode(6)
@@ -508,15 +625,15 @@ subroutine expand_fgrav_in_taylor_series(fnode,dx,dy,dz,fxi,fyi,fzi,poti)
  d2fzzz = fnode(19)
  poti = fnode(20)
 
- fxi = fxi + dx*dfxx & 
-           + dy*dfxy & 
-           + dz*dfxz  
- fyi = fyi + dx*dfxy & 
-           + dy*dfyy & 
-           + dz*dfyz 
- fzi = fzi + dx*dfxz & 
-           + dy*dfyz & 
-           + dz*dfzz  
+ fxi = fxi + dx*(dfxx + 0.5*(dx*d2fxxx + dy*d2fxxy + dz*d2fxxz)) &
+            + dy*(dfxy + 0.5*(dx*d2fxxy + dy*d2fxyy + dz*d2fxyz)) &
+            + dz*(dfxz + 0.5*(dx*d2fxxz + dy*d2fxyz + dz*d2fxzz))
+  fyi = fyi + dx*(dfxy + 0.5*(dx*d2fxxy + dy*d2fxyy + dz*d2fxyz)) &
+            + dy*(dfyy + 0.5*(dx*d2fxyy + dy*d2fyyy + dz*d2fyyz)) &
+            + dz*(dfyz + 0.5*(dx*d2fxyz + dy*d2fyyz + dz*d2fyzz))
+  fzi = fzi + dx*(dfxz + 0.5*(dx*d2fxxz + dy*d2fxyz + dz*d2fxzz)) &
+            + dy*(dfyz + 0.5*(dx*d2fxyz + dy*d2fyyz + dz*d2fyzz)) &
+            + dz*(dfzz + 0.5*(dx*d2fxzz + dy*d2fyzz + dz*d2fzzz))
  poti = poti - (dx*fxi + dy*fyi + dz*fzi)
 
   !print*, "The vector 2"

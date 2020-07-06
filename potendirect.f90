@@ -3,9 +3,9 @@ module potendirect
  implicit none 
  contains 
 
-  subroutine get_accel (x,a,m,np,particlesindex1,particlesindex2)
+  subroutine get_accel (x,a,m,np,particlesindex1)
   ! the index's of particles (BODIES)
-  integer, intent(in) :: particlesindex1(10), particlesindex2(:), np
+  integer, intent(in) :: particlesindex1(10), np
   real, intent(in) :: x(3,np) 
   real, intent(inout) :: a(3, np)
   real, intent(in) :: m(np)
@@ -16,16 +16,14 @@ module potendirect
 
    ! TODO REFACTOR TO JUST TAKE IN ARRAY CONTIAINING PARTICLE INDEXS
   
-   h = 0.
+   !h = 1.
   ! THIS IS BAD 
-  if (np > 128) then
-    part2size = size(particlesindex2)
-  else 
-    part2size = np
-  endif 
-
-  allocate(particles(part2size+10))
-  particles = [particlesindex1,particlesindex2]
+  !if (np > 128) then
+    !part2size = size(particlesindex2)
+  !else 
+    !part2size = np
+  !endif 
+  
   !print*,"particles: ", particles 
 
   !print*, "Direct Sum"
@@ -34,14 +32,14 @@ module potendirect
   !open(unit=56,file="interactions.txt")
   ! Put all the particles into one list 
 
-  !h = 0.1
+  h = 0.1
   ! in this case we don't want to reset a
   ! but is should be done at the start of each step
   ! THIS IS WRONG!!
-  do i=1, size(particles)
-   indexi = particles(i)
-   do j=1, size(particles)
-    indexj = particles(j)
+  do i=1, 10
+   indexi = particlesindex1(i)
+   do j=1, 10
+    indexj = particlesindex1(j)
     if (indexj/=indexi .AND. indexi /= 0 .AND. indexj /= 0) then
      !print*, "indexi, indexj"
      !print*, indexi, indexj
@@ -69,25 +67,35 @@ end subroutine get_accel
 
 subroutine get_accel_leafnode(x,a,m,np,particlesindex1,particlesindex2)
   integer, intent(in) :: np, particlesindex1(:), particlesindex2(:)
-  real, intent(in) :: x(3,np), m(np)
+  real, intent(in) :: x(3,np), m(:)
   real, intent(inout) :: a(3,np)
   real :: r,r2,dx(3), h
   integer :: i, j
   integer :: indexi,indexj
 
-   h = 0.
-  !h = 0.1
+   !h = 1.
+  h = 0.1
   ! in this case we don't want to reset a
   ! but is should be done at the start of each step
   ! THIS IS WRONG!!
+
+  !print*, size(particlesindex1)
+  !print*, size(particlesindex2)
+  !print*, "Size of x: ", size(x)
+  !print*, "Size of a: ", size(a)
   do i=1, size(particlesindex1)
+   !print*, i
    indexi = particlesindex1(i)
    do j=1, size(particlesindex2)
+    !print*, j 
     indexj = particlesindex2(j)
     if (indexj/=indexi .AND. indexi /= 0 .AND. indexj /= 0) then
      !print*, "indexi, indexj"
      !print*, indexi, indexj
+     !print*,"i, j: ", i, j
+     !print*, "Nopart: ",np
      dx = x(:,indexi) - x(:,indexj)
+     !print*, "Segfault here "
      !print*,"dx: ", dx
      !print*, "r2: ", r2
      !print*, "m: ", m(indexj) 
@@ -95,6 +103,7 @@ subroutine get_accel_leafnode(x,a,m,np,particlesindex1,particlesindex2)
      r2 = dot_product(dx,dx)
      r  = sqrt(r2)
      a(:,indexi) = a(:,indexi) - m(indexj)*(1/((r2 + h**2)**1.5))*dx
+     !print*, "Second segfault here "
      !print*,"Accel direct: ", a(:,indexi)
      !print*, "A mag: ", sqrt(dot_product(m(indexj)*(1/((r2*r)))*dx, m(indexj)*(1/((r2*r)))*dx))
      !if (isnan(a(2,indexi))) stop 
@@ -102,6 +111,8 @@ subroutine get_accel_leafnode(x,a,m,np,particlesindex1,particlesindex2)
     endif
   enddo
  enddo
+
+ !print*, "Finshed direct sum"
 
 
 end subroutine get_accel_leafnode
@@ -169,8 +180,8 @@ subroutine get_accel_test(x,a,m,np)
   real :: h,dx(3),r2,r
   integer :: i,j
 
-  h = 0.
-  !h = 0.1
+  !h = 0.
+  h = 0.1
 
   ! SUBOUTINE FOR TESTING THAT ACCEL IS COMPUTED CORRECTLY 
   a = 0.

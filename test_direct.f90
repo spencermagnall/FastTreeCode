@@ -23,7 +23,7 @@ module testdirect
 
   print*, adirect
 
-  call get_accel(x,aintract,m,np,particleindex1,particleindex2)
+  call get_accel(x,aintract,m,np,particleindex1)
 
   print*, aintract
 

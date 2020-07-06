@@ -19,6 +19,8 @@ RECURSIVE subroutine get_com(x,v,m,np,nodes,currentnode,sumMass,cm)
  print*, "where are we "
  ! BASE CASE 
  ! If we have a leaf node 
+
+
  massChild = 0.0
  cmChild = 0.0
  if (nodes(currentnode) % isLeaf .EQV. .TRUE.) then
@@ -108,36 +110,43 @@ RECURSIVE subroutine get_com(x,v,m,np,nodes,currentnode,sumMass,cm)
 
 end subroutine get_com
 
-subroutine compute_quads(x,m,np,nodes,currentnode,endnode)
+subroutine compute_quads(x,m,np,nodes,endnode)
   integer, intent(in) :: np,endnode
   real, intent(in) :: x(3,np), m(np)
-  type(octreenode), intent(inout) :: nodes(:)
-  integer, intent(inout) :: currentnode
-  real :: quads(3,3), dx(3)
-  integer :: i,j
+  type(octreenode), intent(inout) :: nodes(endnode)
+  real :: quads(6), dx(3)
+  integer :: i,j, particleindex 
 
   quads = 0.
 
   do i=1, endnode
+    quads = 0.
     ! For all bodychildren of the node 
     do j=1, nodes(i) % bodychildpont
+       particleindex = nodes(i) % bodychildren(j)
+       print*, "particleindex: ",particleindex
        ! Particle distance from center of mass 
-       dx = x(:, nodes(i) % bodychildren(j)) - nodes(i) % centerofmass
+       dx = x(:, particleindex) - nodes(i) % centerofmass
        
        ! UNROLLED QUADS, DONT NEED ALL OF THESE BECAUSE OF SYM
-       quads(1,1) = quads(1,1) + m(j)*(3.*dx(1)*dx(1) - norm2(dx))
-       quads(1,2) = quads(1,2) + m(j)*(3.*dx(1)*dx(2))
-       quads(1,3) = quads(1,3) + m(j)*(3.*dx(1)*dx(3))
-       quads(2,1) = quads(2,1) + m(j)*(3.*dx(2)*dx(1))
-       quads(2,2) = quads(2,2) + m(j)*(3.*dx(2)*dx(2) - norm2(dx))
-       quads(3,3) = quads(3,3) + m(j)*(3.*dx(3)*dx(3) - norm2(dx))
-       quads(3,2) = quads(3,2) + m(j)*(3.*dx(3)*dx(2))
-       quads(3,1) = quads(3,1) + m(j)*(3.*dx(3)*dx(1))
+       quads(1) = quads(1) + m(particleindex)*(3.*dx(1)*dx(1) - dot_product(dx,dx))
+       quads(2) = quads(2) + m(particleindex)*(3.*dx(1)*dx(2))
+       quads(3) = quads(3) + m(particleindex)*(3.*dx(1)*dx(3))
+       !quads(2,1) = quads(2,1) + m(j)*(3.*dx(2)*dx(1))
+       quads(4) = quads(4) + m(particleindex)*(3.*dx(2)*dx(2) - dot_product(dx,dx))
+       quads(5) = quads(5) + m(particleindex)*(3.*dx(2)*dx(3))
+       quads(6) = quads(6) + m(particleindex)*(3.*dx(3)*dx(3)- dot_product(dx,dx))
+       
 
 
     enddo 
 
+    nodes(i) % quads = quads 
+    print*, "Quads are: ", quads 
+
   enddo 
+
+  !STOP
 
 
   
