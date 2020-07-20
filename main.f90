@@ -1,5 +1,4 @@
 program nbody
-      use OMP_LIB
       use octree
       use delta_t
       use contrivedtree
@@ -21,7 +20,7 @@ program nbody
       use read_dump
       implicit none 
       type(octreenode), allocatable :: nodes(:)
-      integer,parameter :: nopart = 81 
+      integer,parameter :: nopart = 1000 
       real :: x(3, nopart)
       real :: v(3, nopart)
       real :: a(3, nopart)
@@ -39,7 +38,7 @@ program nbody
       real :: c0,c1(3),c2(3,3),c3(3,3,3),rms, boxsize 
       integer :: interactionlist(nopart,nopart), endnode
       integer :: currentparts
-      real :: asum(3)
+      real :: asum(3),starteval, stopeval
 
       
       c0 = 0.
@@ -132,21 +131,25 @@ program nbody
       node1 = 1
       !call evaluate_gravity(node1,nodes,cm,c0,c1,c2,c3,x,a,asum)
       !STOP
+      call cpu_time(starteval)
       call evaluate_gravity_stack(nodes,x,a)
+      call cpu_time(stopeval)
+      print*, "Times:",starteval,stopeval
+      print*,"Time taken: ", stopeval - starteval
       !STOP
       !call get_accel_body(nodes(1),nodes,x,a)
-      !print*,"Accel: "
-      !do i=1, nopart
-      !  print*, a(:,i)
-      !enddo
-      !print*, "Accel test: "
-      !do i=1, nopart
-      !  print*, atest(:,i)
-      !enddo
-      !print*,"Delta accel"
-      !do i=1,nopart
-      !  print*,atest(:,i) - a(:,i)
-      !enddo
+      print*,"Accel: "
+      do i=1, nopart
+        print*, a(:,i)
+      enddo
+      print*, "Accel test: "
+      do i=1, nopart
+        print*, atest(:,i)
+      enddo
+      print*,"Delta accel"
+      do i=1,nopart
+        print*,atest(:,i) - a(:,i)
+      enddo
       call get_rms(a,atest,nopart,rms)
       print*,"Root mean squared error: "
       print*,rms

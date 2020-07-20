@@ -1,5 +1,5 @@
 FC=gfortran
-FFLAGS= -fdefault-real-8 -fdefault-double-8 -Wall -funroll-loops -fcheck=bounds -Wno-tabs -g -O3  
+FFLAGS= -fopenmp -fdefault-real-8 -fdefault-double-8 -Wall -funroll-loops -fcheck=bounds -Wno-tabs -g -O3 
 POTEN = potendirect.f90
 #POTEN = forcebinary.f90
 STEP = step_leapfrog.f90

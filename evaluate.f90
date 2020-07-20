@@ -1,5 +1,6 @@
 module evaluate
  use octreetype
+ !$ use omp_lib 
  implicit none 
 
 type evaluate_stack_data
@@ -17,11 +18,12 @@ contains
    real, intent(in) :: x(:,:)
    real, intent(inout) :: accel(:,:)
    integer :: stacksize, top 
-   type(evaluate_stack_data) :: stack(100000)
+   ! Openmp disables heap allocation so this should be allocatable 
+   type(evaluate_stack_data) :: stack(1000)
    type(octreenode) :: currentnode,childnode
    real :: c0,c1(3),c2(3,3),c3(3,3,3),z0(3),z1(3)
-   real :: bodaccel(3),xbod(3),fnode(20),fno,bodpot,dx(3)
-   integer :: bodyindex,i,iter
+   real :: bodaccel(3),xbod(3),fnode(20),bodpot,dx(3)
+   integer :: bodyindex,i,j,iter,numthreads,toptemp
 
    top = 1
    stacksize = 1
@@ -34,10 +36,31 @@ contains
    stack(1) % c1 = 0.
    stack(1) % c2 = 0.
    stack(1) % c3 = 0.
+   print*, "Before openmp loop"
+   numthreads = 1
+   ! get number of OpenMPthreads
+   !$omp parallel default(none) shared(numthreads)
+     numthreads = omp_get_num_threads()
+   !$omp end parallel
 
-   do while (top /= 0.)
+   print*, "Number of threads is: ", numthreads
+   !stop
+   !read*
 
+   !!$OMP parallel default(none) &
+   !!$OMP shared(iter,stack,x,accel,numthreads) &
+   !!$OMP private(z0,c0,c1,c2,c3,currentnode,bodyindex,bodaccel) &
+   !!$OMP private(childnode,i,fnode,bodpot,dx)
+   !!$OMP single 
+   !!$omp do
+   !do j=1, numthreads
+   
+   !!$omp task if(top > 0)
+   do while (top /= 0)  
+   !do j=1, top
+    print*, "Thread number is: ", j
     print*, "The current iteration is: ",iter
+    print*, "Top is: ", top
     iter = iter + 1 
     ! POP ITEM FROM STACK 
     currentnode = stack(top) % node
@@ -106,7 +129,9 @@ contains
     !nodeindex = node % children(i)
     !print*, "Node index: ",nodeindex
     !call evaluate_gravity(childnode,nodes,z0new,c0new,c1new,c2new,c3new,x,accel)
+    !!$OMP CRITICAL 
     top = top + 1 
+    !!$OMP END CRITICAL 
 
     ! Push Children onto stack 
     stack(top) % node = childnode
@@ -118,14 +143,20 @@ contains
    endif 
 
   enddo
+
  
 
   endif 
 
     
-
-
+  print*, "top is: ", top 
   enddo 
+  !enddo 
+  !!$omp end do 
+
+  !!$omp end task 
+  !!$omp end single 
+  !!$OMP end parallel
 
 
  end subroutine evaluate_gravity_stack
