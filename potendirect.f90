@@ -50,7 +50,9 @@ module potendirect
      !print*, "abefore: ", a(:,indexi)
      r2 = dot_product(dx,dx)
      r  = sqrt(r2)
+     !$omp critical
      a(:,indexi) = a(:,indexi) - m(indexj)*(1/((r2 + h**2)**1.5))*dx
+     !$omp end critical
      !print*,"Accel direct: ", a(:,indexi)
      !print*, "A mag: ", sqrt(dot_product(m(indexj)*(1/((r2*r)))*dx, m(indexj)*(1/((r2*r)))*dx))
      !if (isnan(a(2,indexi))) stop 
@@ -102,7 +104,9 @@ subroutine get_accel_leafnode(x,a,m,np,particlesindex1,particlesindex2)
      !print*, "abefore: ", a(:,indexi)
      r2 = dot_product(dx,dx)
      r  = sqrt(r2)
+     !$omp critical 
      a(:,indexi) = a(:,indexi) - m(indexj)*(1/((r2 + h**2)**1.5))*dx
+     !$omp end critical 
      !print*, "Second segfault here "
      !print*,"Accel direct: ", a(:,indexi)
      !print*, "A mag: ", sqrt(dot_product(m(indexj)*(1/((r2*r)))*dx, m(indexj)*(1/((r2*r)))*dx))

@@ -118,10 +118,14 @@ subroutine compute_quads(x,m,np,nodes,endnode)
   integer :: i,j, particleindex 
 
   quads = 0.
+  i = 0
+  j = 0
+  dx = 0.
 
   do i=1, endnode
     quads = 0.
     ! For all bodychildren of the node 
+    if (nodes(i) % bodychildpont /= 0) then 
     do j=1, nodes(i) % bodychildpont
        particleindex = nodes(i) % bodychildren(j)
        print*, "particleindex: ",particleindex
@@ -143,6 +147,7 @@ subroutine compute_quads(x,m,np,nodes,endnode)
 
     nodes(i) % quads = quads 
     print*, "Quads are: ", quads 
+    endif 
 
   enddo 
 

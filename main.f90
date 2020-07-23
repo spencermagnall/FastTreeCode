@@ -18,9 +18,10 @@ program nbody
       use potendirect
       use errors
       use read_dump
+      use timing
       implicit none 
       type(octreenode), allocatable :: nodes(:)
-      integer,parameter :: nopart = 1000 
+      integer,parameter :: nopart = 100000 
       real :: x(3, nopart)
       real :: v(3, nopart)
       real :: a(3, nopart)
@@ -37,7 +38,7 @@ program nbody
       real :: sumMass, cm(3)
       real :: c0,c1(3),c2(3,3),c3(3,3,3),rms, boxsize 
       integer :: interactionlist(nopart,nopart), endnode
-      integer :: currentparts
+      integer :: currentparts,startwall,stopwall
       real :: asum(3),starteval, stopeval
 
       
@@ -88,7 +89,7 @@ program nbody
       call init(x,v,m,nopart)
       call get_optimal_boxsize(x,m,nopart,boxsize,center)
       !STOP
-      call get_accel_test(x,atest,m,nopart)
+      !call get_accel_test(x,atest,m,nopart)
       print*, "Finished setup!"
       !call test_direct(x,m,nopart)
       !STOP
@@ -116,7 +117,13 @@ program nbody
       a = 0.
       node1 = 1
       node2 = 1
-      call interact(node1,node2,nodes,x,m,a,nopart)
+      !call interact(node1,node2,nodes,x,m,a,nopart)
+      print*,"Wall time start: ", wallclock()
+      call cpu_time(starteval)
+      call interact_stack(nodes,x,m,a,nopart)
+      call cpu_time(stopeval)
+      print*,"Wall time total: ", wallclock()
+      print*,"Cpu time: ", stopeval-starteval
       !STOP
       !print*,nodes(1) % c3
       !print*, "Accel:"
@@ -132,7 +139,10 @@ program nbody
       !call evaluate_gravity(node1,nodes,cm,c0,c1,c2,c3,x,a,asum)
       !STOP
       call cpu_time(starteval)
+     print*, wallclock()
       call evaluate_gravity_stack(nodes,x,a)
+      !call evaluate_gravity_parallel(nodes,x,a)
+      print*,"Walltime is:", wallclock()
       call cpu_time(stopeval)
       print*, "Times:",starteval,stopeval
       print*,"Time taken: ", stopeval - starteval

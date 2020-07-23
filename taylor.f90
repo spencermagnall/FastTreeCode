@@ -190,9 +190,9 @@ subroutine compute_coeff(dx,dy,dz,dr,totmass,quads,c0,c1,c2,c3)
  !enddo
 
  ! UNROLL LOOPS
- c1(1) = c1(1) + totmass*rarry(1)*d1 + fqx
- c1(2) = c1(2) + totmass*rarry(2)*d1 + fqy
- c1(3) = c1(3) + totmass*rarry(3)*d1 + fqz
+ c1(1) = c1(1) + totmass*rarry(1)*d1 !+ fqx
+ c1(2) = c1(2) + totmass*rarry(2)*d1 !+ fqy
+ c1(3) = c1(3) + totmass*rarry(3)*d1 !+ fqz
 
  ! C2 = MB kronecker ij D1 + MB Ri Rj D2
  ! rank 2 tensor 
@@ -253,7 +253,7 @@ subroutine compute_coeff(dx,dy,dz,dr,totmass,quads,c0,c1,c2,c3)
  c3(3,2,3) = c3(3,2,3) - dr4m3*(5.*ry*rz*rz - ry)    !+ d2fyzzq ! d2fydzdz
  c3(3,3,1) = c3(3,3,1) - dr4m3*(5.*rx*rz*rz - rx)    !+ d2fxzzq ! d2fxdzdz
  c3(3,3,2) = c3(3,3,2) - dr4m3*(5.*ry*rz*rz - ry)    !+ d2fyzzq ! d2fydzdz
- c3(3,3,3) = c3(3,3,3) - dr4m3*(5.*rz*rz*rz - 3.*rz) !+ d2fzzzq ! d2fzdzdz
+ c3(3,3,3) = c3(3,3,3) - dr4m3*(5.*rz*rz*rz - 3.*rz) ! + d2fzzzq ! d2fzdzdz
 
 
  !print*, "Coeff 0:"
@@ -277,6 +277,52 @@ subroutine compute_coeff(dx,dy,dz,dr,totmass,quads,c0,c1,c2,c3)
 
 
 end subroutine compute_coeff
+
+subroutine compute_coeff_new(dx,dy,dz,dr,totmass,quads,c0,c1,c2,c3)
+  real, intent(in) :: dx,dy,dz,dr,totmass
+ real, intent(in) :: quads(6)
+ !real, intent(inout) :: coeff(4)
+ real, intent(inout) :: c0,c1(3),c2(3,3),c3(3,3,3)
+ real :: d0,d1
+ real :: d2,d3
+ real :: r
+ !real :: d1arry(3)
+ real :: rarry(3)
+ real :: dr2,dr3,dr4,dr5,dr6,dr4m3
+ integer :: i, j, k
+
+
+ r = sqrt(dx**2 + dy**2 + dz**2)
+
+ rarry = (/dx,dy,dz/)
+
+ rx  = dx*dr
+ ry  = dy*dr
+ rz  = dz*dr
+
+ ! Note dr = 1/r
+ !print*, "dr"
+ d0 = dr
+ dr2 = dr*dr
+ dr3 = dr2*dr
+ dr4 = dr3*dr
+ dr5 = dr4*dr
+ !print*, d0
+ d1 = -dr3
+ !print*, 'd1'
+ !print*, d1*totmass
+ ! Why is this 3 not 2?????
+ d2 = 3.*dr3*dr2
+ !print*, d2
+ d3 = -5.*d2*dr2
+
+ dr4m3 = 3.*totmass*dr4
+
+ c0 = c0 + totmass * dr
+
+
+
+end subroutine compute_coeff_new
 
 real function delta(i,j)
  integer, intent(in) :: i, j

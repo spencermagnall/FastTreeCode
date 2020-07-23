@@ -1,6 +1,6 @@
 module evaluate
  use octreetype
- !$ use omp_lib 
+ use omp_lib 
  implicit none 
 
 type evaluate_stack_data
@@ -13,17 +13,283 @@ end type
 
 contains 
 
+ subroutine evaluate_gravity_parallel(nodes,x,accel)
+  type(octreenode), intent(inout) :: nodes(:)
+   real, intent(in) :: x(:,:)
+   real, intent(inout) :: accel(:,:)
+   integer :: stacksize, top,numthreads,iter,nodeindex
+   ! Openmp disables heap allocation so this should be allocatable 
+   type(evaluate_stack_data) :: stack(1000)
+   real :: c0,c1(3),c2(3,3),c3(3,3,3),z0(3)
+
+
+   top = 1
+
+   ! Push the root node 
+   !stack(1) % node = nodes(1)
+   z0 = 0.
+   c0 = 0.
+   c1 = 0.
+   c2 = 0.
+   c3 = 0.
+   
+   print*, "Before openmp loop"
+   numthreads = 1
+   ! get number of OpenMPthreads
+   !$omp parallel default(none) shared(numthreads)
+     numthreads = omp_get_num_threads()
+   !$omp end parallel
+
+   print*, "Number of threads is: ", numthreads
+
+   !!$omp parallel default(none) &
+   !!$omp shared(nodes,x,accel) &
+   !!$omp private(nodeindex,z0,c0,c1,c2,c3)
+   !!$omp single 
+   !!$omp task shared(nodeindex,nodes,x,accel) &
+   !!$omp private(z0,c0,c1,c2,c3)
+   print*,"nodeindex: ",nodeindex
+   nodeindex = 1 
+  call eval(nodeindex,nodes,z0,c0,c1,c2,c3,x,accel)
+        !if (top == 0) stop 
+   !!$omp end task 
+      !!$omp taskwait 
+
+   !!$omp end single 
+   !!$omp end parallel 
+
+
+ end subroutine evaluate_gravity_parallel
+
+
+ subroutine eval(nodeindex,nodes,z0,c0,c1,c2,c3,x,accel)
+  type(octreenode), intent(inout) :: nodes(:)
+  real,intent(inout) :: c0,c1(3),c2(3,3),c3(3,3,3),z0(3),accel(:,:)
+  real, intent(in) :: x(:,:)!,c0total(:),c1(3,:),c2(3,3,:),c3(3,3,3,:)
+  !real, intent(inout) :: asum(3) 
+  integer, intent(inout) :: nodeindex
+  integer :: childnode
+  real :: z1(3),xbod(3),bodpot,bodaccel(3),accelbef(3)
+  integer :: i,nochild,bodyindex
+  real :: c0new, c1new(3), c2new(3,3),c3new(3,3,3),z0new(3),fnode(20),dx(3),m,nodemass
+  real :: c0copy,c1copy(3),c2copy(3,3),c3copy(3,3,3)
+  integer  :: nthreads
+  real :: nodeaccelsum(3)
+ 
+
+  bodpot = 0.
+  bodaccel = 0.
+  bodyindex = 0.
+
+  c0new = 0.
+  c1new = 0.
+  c2new = 0.
+  c3new = 0.
+  nodeaccelsum = 0.
+  childnode = 0
+  z1 = 0.
+  xbod = 0.
+  bodpot = 0.
+  bodaccel = 0.
+  accelbef = 0.
+  i = 0
+  nochild = 0
+  bodyindex = 0
+  z0new = 0.
+  fnode = 0.
+  dx = 0. 
+  nodemass = 0.
+  m = 1./(size(accel)/3.)
+
+   print*, "Node index is: ", nodeindex
+
+   print*, "Center of mass (old): ", z0
+  ! Get CoM of current node
+   z1 = nodes(nodeindex) % centerofmass
+   print*, "Center of Mass new: "
+   print*, z1
+
+   nodemass = nodes(nodeindex) % totalmass
+   print*, "Node mass: ", nodes(nodeindex) % totalmass
+   print*, "c1 is: ", c1
+
+  ! TRANSLATE TAYLOR SERIES T0 TO CENTER OF MASS OF A
+  
+  ! COPY VALUES SO THEY ARENT CHANGED BY TRANSLATION
+  c0new = c0
+  c1new = c1
+  c2new = c2
+  c3new = c3 
+  call translate_expansion_center(z0,z1,c0new,c1new,c2new,c3new)
+  !if (c0 /= 0. .and. nodes(nodeindex) % totalmass /= 0.) call translate_expansion_center(z0,z1,c0,c1,c2,c3)
+
+  !dr = z0-z1
+
+  !call expand_fgrav_in_taylor_series()
+  
+  ! TA += T0
+  ! Sum up the field tensors in a taylor series to get poten
+  ! Accumulate field tensors 
+
+  !print*, "Node taylor coeffs: "
+  !print*, "c0 node: "
+  !print*, node % c0 
+  print*, "c1 node: "
+  print*, nodes(nodeindex) %c1 * nodes(nodeindex) % totalmass 
+  !print*, "c2 node: "
+  !print*, nodes(nodeindex) % c2
+  !print*, "c3 node: "
+  !print*, nodes(nodeindex) % c3
+
+
+  !if (node % c0 /= 0.) then
+  c0new = (nodes(nodeindex) % c0) + c0new
+  !c0new = c0
+  !print*, "C0: "
+  !print*,c0new
+  c1new = (nodes(nodeindex) % c1) + c1new
+  !c1new = c1 
+  !print*, "C1: "
+  !print*,c1new
+  !c2new = c2
+  c2new = (nodes(nodeindex) % c2) + c2new
+  !print*, "C2: "
+  !print*,c2new
+  c3new = (nodes(nodeindex) % c3) + c3new
+  !c3new = c3 
+  !print*, "C3: "
+  !print*, c3new
+  ! FOR BODY CHILDREN OF A 
+
+  !else
+  !  c0new = c0
+  !  c1new = c1
+  !  c2new = c2
+  !  c3new = c3 
+  !endif 
+ !STOP
+
+  !nochild = node % bodychildpont
+  if (nodes(nodeindex) % isLeaf) then
+  do i=1, 10
+    
+    !if (node%data(i)==0) then
+    !  EXIT
+    !endif 
+    ! Get the index of the body 
+    !bodyindex = node % bodychildren(i)
+
+    if (nodes(nodeindex) % data(i) /= 0 .and. c0new /= 0.) then
+    !print*, nodes(nodeindex) % data(i) 
+    bodyindex = nodes(nodeindex) % data(i)
+    !print*, "Bodyindex: ",bodyindex
+    xbod = x(:,bodyindex)
+
+
+
+   ! Evaluate TA at body's position
+   !call poten_at_bodypos(xbod,z1,c0,c1,c2,c3,bodpot)
+   bodaccel = 0.
+   print*, "c0new: ", c0new
+   dx = xbod - z1 
+   bodaccel = 0.
+   !fnode = node % fnode
+   !call accel_at_bodypos(xbod,z1,c0,c1,c2,c3,bodaccel)
+   !call expand_fgrav_in_taylor_series(fnode,dx(1),dx(2),dx(3),bodaccel(1),bodaccel(2),bodaccel(3),bodpot)
+   !accel(:,bodyindex) = accel(:,bodyindex) + bodaccel
+   call accel_at_bodypos(xbod,z1,c0new,c1new,c2new,c3new,bodaccel)
+
+   ! add to body's potential and acceleration
+
+   !poten(bodyindex) = poten(bodyindex) + bodpot
+   print*, "accel bef:",accel(:,bodyindex)
+   !accelbef = accel(:,bodyindex)
+   !accel(:,bodyindex) = accel(:,bodyindex) + c1 
+   accel(:,bodyindex) = accel(:,bodyindex) + bodaccel
+   print*, "Accel now: ", accel(:,bodyindex)
+   !asum = asum + bodaccel*m
+   nodeaccelsum = nodeaccelsum + bodaccel*m
+   !print*, "Asum: ", asum
+   !print*, "bodaccel: ", bodaccel
+   !print*, "delta accel:"
+   !print*, accel(:,bodyindex) - accelbef
+
+    
+
+
+   endif 
+
+
+  enddo 
+  print*, "Part accelsum: ",nodeaccelsum
+  print*, "c1: ", c1new * nodes(nodeindex) % totalmass   
+  !write(88,*) "Node index: ", nodeindex, " Force sum: ", c1new * nodes(nodeindex) % totalmass, "Part accelsum: ",nodeaccelsum, &
+  ! "Center of mass: ", nodes(nodeindex) %centerofmass, "Node mass: ", nodes(nodeindex) % totalmass
+ else 
+
+  ! FOR CHILDREN OF A 
+  ! change center of mass
+  z0new = z1
+  !!$OMP DO 
+  print*,"Reached this point"
+  if (nodeindex == 1) then 
+    open(88,file="forcesums.txt",position="append")
+  endif 
+  !write(88,*) "Node index: ", nodeindex, " Force sum: ", c1new, &
+   !"Center of mass: ", nodes(nodeindex) %centerofmass, "Node mass: ", nodes(nodeindex) % totalmass, &
+   !"c2: ", nodes(nodeindex) % c2 
+  
+  !close(88)
+  !$omp parallel default(none) &
+  !$omp shared(nodes,x,accel,nodeindex) &
+  !$omp private(childnode,z0new,c0new,c1new,c2new,c3new,i) 
+  !$omp single 
+  do i=1, 8
+    !print*, "Childnode index: ", nodes(nodeindex) % children(i)
+    !print*, "Has c1 changed: ",c1new
+    !print*, "Has z0new changed: ",z0new
+  if (nodes(nodeindex) % children(i) /= 0 .and. norm2(nodes(nodes(nodeindex) %children(i)) % centerofmass) /= 0. ) then
+      
+    
+    !$omp task 
+    print*, "Childnode index: ", nodes(nodeindex) % children(i)
+    childnode = nodes(nodeindex) % children(i)
+    call eval(childnode,nodes,z0new,c0new,c1new,c2new,c3new,x,accel)
+    !$omp end task 
+    !print*, nodes(nodeindex) % children(i)
+    !c1new = c1copy 
+   endif 
+
+   !if (nodeindex == 1) stop 
+
+  enddo
+  !$omp end single 
+  !$omp end parallel 
+  !stop 
+  
+  !!$OMP ENDDO   
+
+  endif 
+
+
+
+ end subroutine eval
+
+  
+
  subroutine evaluate_gravity_stack(nodes,x,accel)
    type(octreenode), intent(inout) :: nodes(:)
    real, intent(in) :: x(:,:)
    real, intent(inout) :: accel(:,:)
-   integer :: stacksize, top 
+   integer :: stacksize, top,toplocal 
    ! Openmp disables heap allocation so this should be allocatable 
    type(evaluate_stack_data) :: stack(1000)
    type(octreenode) :: currentnode,childnode
    real :: c0,c1(3),c2(3,3),c3(3,3,3),z0(3),z1(3)
    real :: bodaccel(3),xbod(3),fnode(20),bodpot,dx(3)
-   integer :: bodyindex,i,j,iter,numthreads,toptemp
+   integer :: bodyindex,i,j,iter,numthreads,toptemp,k
+   logical, allocatable :: threadworking(:)
+   integer, allocatable :: istacklocal(:)
 
    top = 1
    stacksize = 1
@@ -36,41 +302,78 @@ contains
    stack(1) % c1 = 0.
    stack(1) % c2 = 0.
    stack(1) % c3 = 0.
+   currentnode = nodes(1)
+   print*, "Root node pushed"
+
+    
+  print*, "top is: ", top 
    print*, "Before openmp loop"
    numthreads = 1
    ! get number of OpenMPthreads
    !$omp parallel default(none) shared(numthreads)
      numthreads = omp_get_num_threads()
    !$omp end parallel
+   allocate(threadworking(numthreads))
+   allocate(istacklocal(numthreads))
+   threadworking = .true.
 
    print*, "Number of threads is: ", numthreads
-   !stop
-   !read*
 
-   !!$OMP parallel default(none) &
-   !!$OMP shared(iter,stack,x,accel,numthreads) &
-   !!$OMP private(z0,c0,c1,c2,c3,currentnode,bodyindex,bodaccel) &
-   !!$OMP private(childnode,i,fnode,bodpot,dx)
-   !!$OMP single 
-   !!$omp do
-   !do j=1, numthreads
-   
-   !!$omp task if(top > 0)
-   do while (top /= 0)  
+  !$omp parallel default(none) &
+  !$omp shared(stack,top,x,accel,nodes,numthreads,threadworking,istacklocal) &
+  !$omp private(z0,z1,c0,c1,c2,c3) &
+  !$omp private(currentnode,bodyindex,xbod,bodaccel,childnode,dx,k)
+  
+   !$ k=omp_get_thread_num() + 1
+   ! local stack is currently empty 
+   istacklocal(k) = 0 
+   ! Just for compiler errors 
+   currentnode = nodes(1)
+   !print*,"Thread is: ", k
+   ! here top is the top of the global stack 
+  over_stack: do while (any(istacklocal > 0) .or. top > 0)  
    !do j=1, top
-    print*, "Thread number is: ", j
-    print*, "The current iteration is: ",iter
-    print*, "Top is: ", top
-    iter = iter + 1 
+    !print*, "Thread number is: ", j
+    !print*, "The current iteration is: ",iter
+    !print*, "Top is: ", top
+    !print*, "local stack top: ", istacklocal(k)
+    !iter = iter + 1 
     ! POP ITEM FROM STACK 
-    currentnode = stack(top) % node
-    z0 = stack(top) % z0
-    c0 = stack(top) % c0
-    c1 = stack(top) % c1
-    c2 = stack(top) % c2 
-    c3 = stack(top) % c3 
+    !print*,"istacklocal: ",istacklocal(k)
+    ! pop of local stack 
+    if (istacklocal(k) > 0 ) then 
+        currentnode = stack(istacklocal(k)) % node
+        z0 = stack(istacklocal(k)) % z0
+        c0 = stack(istacklocal(k)) % c0
+        c1 = stack(istacklocal(k)) % c1
+        c2 = stack(istacklocal(k)) % c2 
+        c3 = stack(istacklocal(k)) % c3 
 
-    top = top - 1 
+        istacklocal(k) = istacklocal(k) - 1 
+        threadworking(k) = .true.
+    else 
+    !$omp critical(globalstack) 
+        if (top > 0) then 
+        currentnode = stack(top) % node
+        z0 = stack(top) % z0
+        c0 = stack(top) % c0
+        c1 = stack(top) % c1
+        c2 = stack(top) % c2 
+        c3 = stack(top) % c3 
+
+        top = top - 1 
+        threadworking(k) = .true. 
+        !print*,"working on thread",k
+      else
+       threadworking(k) = .false.
+        
+      endif 
+    !$omp end critical(globalstack)
+    endif 
+    !if top
+  ! If thread has work to do, do it 
+  if (threadworking(k)) then 
+   
 
     ! Perform evaluate on popped item 
 
@@ -78,16 +381,16 @@ contains
   
 
   ! TRANSLATE TAYLOR SERIES T0 TO CENTER OF MASS OF A
-  print*, "Translating expansion: "
+  !print*, "Translating expansion: "
   call translate_expansion_center(z0,z1,c0,c1,c2,c3)
 
   c0 = currentnode % c0 + c0
   !c0new = c0
-  !print*, "C0: "
+  !print*, "C0: ",c0
   !print*,c0new
   c1 = currentnode % c1 + c1
   !c1new = c1 
-  !print*, "C1: "
+  !print*, "C1: ",c1
   !print*,c1new
   !c2new = c2
   c2 = currentnode % c2 + c2
@@ -105,8 +408,8 @@ contains
    xbod = x(:,bodyindex)
    dx = xbod - z1 
    bodaccel = 0.
-   fnode = currentnode % fnode
-   print*,"calculated accel: "
+   !fnode = currentnode % fnode
+   !print*,"calculated accel: "
    call accel_at_bodypos(xbod,z1,c0,c1,c2,c3,bodaccel)
    print*,bodaccel
    !expand_fgrav_in_taylor_series(fnode,dx(1),dx(2),dx(3),bodaccel(1),bodaccel(2),bodaccel(3),bodpot)
@@ -124,22 +427,38 @@ contains
 
 
    if (currentnode % children(i) /= 0) then  
-    print*, "Childnode index: ", currentnode % children(i)
+    !print*, "Childnode index: ", currentnode % children(i)
     childnode = nodes(currentnode % children(i))
     !nodeindex = node % children(i)
     !print*, "Node index: ",nodeindex
-    !call evaluate_gravity(childnode,nodes,z0new,c0new,c1new,c2new,c3new,x,accel)
-    !!$OMP CRITICAL 
-    top = top + 1 
-    !!$OMP END CRITICAL 
+    !call evaluate_gravity(childnode,nodes,z0new,c0new,c1new,c2new,c3new,x,accel) 
 
-    ! Push Children onto stack 
-    stack(top) % node = childnode
-    stack(top) % z0 = z0
-    stack(top) % c0 = c0
-    stack(top) % c1 = c1 
-    stack(top) % c2 = c2
-    stack(top) % c3  = c3 
+    ! if threads are waiting push to global stack 
+    if (any(threadworking) .eqv. .false.) then 
+      !$omp critical(globalstack)
+      top = top + 1 
+      ! Push Children onto stack 
+      stack(top) % node = childnode
+      stack(top) % z0 = z0
+      stack(top) % c0 = c0
+      stack(top) % c1 = c1 
+      stack(top) % c2 = c2
+      stack(top) % c3  = c3 
+      !$omp end critical(globalstack)
+
+    ! else push to local stack 
+    else 
+      istacklocal(k) = istacklocal(k) + 1
+      stack(istacklocal(k)) % node = childnode
+      stack(istacklocal(k)) % z0 = z0
+      stack(istacklocal(k)) % c0 = c0
+      stack(istacklocal(k)) % c1 = c1 
+      stack(istacklocal(k)) % c2 = c2
+      stack(istacklocal(k)) % c3  = c3 
+
+    endif 
+
+
    endif 
 
   enddo
@@ -148,15 +467,12 @@ contains
 
   endif 
 
-    
-  print*, "top is: ", top 
-  enddo 
-  !enddo 
-  !!$omp end do 
+endif 
 
-  !!$omp end task 
-  !!$omp end single 
-  !!$OMP end parallel
+    
+  !print*, "top is: ", top 
+  enddo over_stack
+  !$OMP end parallel
 
 
  end subroutine evaluate_gravity_stack
@@ -385,15 +701,15 @@ contains
   c3old = c3
   !print*, "c0"
   !print*, c0old
-  print*, "c1"
+  !print*, "c1"
   print*, c1old
-  print*, "c2"
+  !print*, "c2"
   print*, c2old
   !print*, "c3"
   !print*, c3old(2,1,1)
   sep1 = 0.
   sep1 = z1 - z0
-  print*, "sep1: ", sep1
+  !print*, "sep1: ", sep1
   call outer_product1(sep1,sep1,sep2)
   call outer_product2(sep2,sep1,sep3)
 
@@ -437,7 +753,7 @@ contains
   c0 = c0old + dot_product(c1old,sep1) !+ 0.5*inner_product2(sep2,c2old) + 1./6.*inner_product3(sep3,c3)
   c1 = c1old + sep1c2comp !+ 0.5*sep2c3comp
   !print*, "c1 is: ",c1
-  c2 = c2old !+ sep1c3comp !+ inner_product31_to_2(sep1,c3old)
+  c2 = c2old + sep1c3comp !+ inner_product31_to_2(sep1,c3old)
   c3 = c3old
 
  end subroutine translate_expansion_center

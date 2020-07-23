@@ -18,7 +18,7 @@ module opening_criterion
 
   ! Get the magnitude of the difference between CoM's
   dx = cm1 - cm2
-  print*,dx
+  !print*,dx
   zmag = sqrt(dx(1)*dx(1) + dx(2)*dx(2)+ dx(3)*dx(3))
 
   ! get the rmax for nodes 1 and 2
@@ -28,11 +28,11 @@ module opening_criterion
   !call distance_to_corner(node2,rmax2)
 
 
-  print*, "Rmax values: "
-  print*, rmax1, rmax2
+  !print*, "Rmax values: "
+  !print*, rmax1, rmax2
 
-  print*,"Zmag: ", zmag
-  print*, "rmax1 + rmax2/theta: ", (rmax1 + rmax2)/theta
+  !print*,"Zmag: ", zmag
+  !print*, "rmax1 + rmax2/theta: ", (rmax1 + rmax2)/theta
   if (zmag > (rmax1+rmax2)/theta) then
     bool = .TRUE.
   else 
