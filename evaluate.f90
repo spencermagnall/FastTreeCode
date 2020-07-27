@@ -42,21 +42,22 @@ contains
 
    print*, "Number of threads is: ", numthreads
 
-   !!$omp parallel default(none) &
-   !!$omp shared(nodes,x,accel) &
-   !!$omp private(nodeindex,z0,c0,c1,c2,c3)
-   !!$omp single 
+   !$omp parallel default(none) &
+   !$omp shared(nodes,x,accel) &
+   !$omp private(nodeindex,z0,c0,c1,c2,c3)
+   !$omp single 
    !!$omp task shared(nodeindex,nodes,x,accel) &
-   !!$omp private(z0,c0,c1,c2,c3)
+   
    print*,"nodeindex: ",nodeindex
    nodeindex = 1 
-  call eval(nodeindex,nodes,z0,c0,c1,c2,c3,x,accel)
+   !!$omp task 
+    call eval(nodeindex,nodes,z0,c0,c1,c2,c3,x,accel)
         !if (top == 0) stop 
    !!$omp end task 
       !!$omp taskwait 
 
-   !!$omp end single 
-   !!$omp end parallel 
+   !$omp end single 
+   !$omp end parallel 
 
 
  end subroutine evaluate_gravity_parallel
@@ -240,10 +241,10 @@ contains
    !"c2: ", nodes(nodeindex) % c2 
   
   !close(88)
-  !$omp parallel default(none) &
-  !$omp shared(nodes,x,accel,nodeindex) &
-  !$omp private(childnode,z0new,c0new,c1new,c2new,c3new,i) 
-  !$omp single 
+  !!$omp parallel default(none) &
+  !!$omp shared(nodes,x,accel,nodeindex) &
+  !!$omp private(childnode,z0new,c0new,c1new,c2new,c3new,i) 
+  !!$omp single 
   do i=1, 8
     !print*, "Childnode index: ", nodes(nodeindex) % children(i)
     !print*, "Has c1 changed: ",c1new
@@ -251,11 +252,11 @@ contains
   if (nodes(nodeindex) % children(i) /= 0 .and. norm2(nodes(nodes(nodeindex) %children(i)) % centerofmass) /= 0. ) then
       
     
-    !$omp task 
+    !!$omp task 
     print*, "Childnode index: ", nodes(nodeindex) % children(i)
     childnode = nodes(nodeindex) % children(i)
     call eval(childnode,nodes,z0new,c0new,c1new,c2new,c3new,x,accel)
-    !$omp end task 
+    !!$omp end task 
     !print*, nodes(nodeindex) % children(i)
     !c1new = c1copy 
    endif 
@@ -263,8 +264,8 @@ contains
    !if (nodeindex == 1) stop 
 
   enddo
-  !$omp end single 
-  !$omp end parallel 
+  !!$omp end single 
+  !!$omp end parallel 
   !stop 
   
   !!$OMP ENDDO   

@@ -117,14 +117,15 @@ program nbody
       a = 0.
       node1 = 1
       node2 = 1
-      !call interact(node1,node2,nodes,x,m,a,nopart)
+      
       print*,"Wall time start: ", wallclock()
       call cpu_time(starteval)
+      !call interact(node1,node2,nodes,x,m,a,nopart)
       call interact_stack(nodes,x,m,a,nopart)
       call cpu_time(stopeval)
       print*,"Wall time total: ", wallclock()
       print*,"Cpu time: ", stopeval-starteval
-      !STOP
+      STOP
       !print*,nodes(1) % c3
       !print*, "Accel:"
       !print*, a
@@ -207,7 +208,7 @@ program nbody
             !call print_tree(nodes,x,0,1)
             !if (deltap > abs(1.e-14)) stop
             deallocate(nodes) 
-            !STOP            
+            STOP            
 
       enddo
       close(66)

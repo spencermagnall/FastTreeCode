@@ -17,14 +17,14 @@ module interaction
  contains 
 
 
- subroutine interact_stack(nodes,x,m,a,nopart)
+ subroutine interact_yokota(nodes,x,m,a,nopart)
   use omp_lib
   integer, intent(in) :: nopart
   type(octreenode), intent(inout) :: nodes(:)
   real, intent(in) :: x(3,nopart),m(nopart)
   real, intent(inout) :: a(3,nopart)
   integer :: stacksize, top, iter,nodeindex1,nodeindex2
-  type(interact_stack_data) :: stack(100000)
+  type(interact_stack_data) :: stack(100000), stacklocal(100000)
   type(octreenode) :: newnode1,newnode2, splitnode, regnode
   integer :: i, j, counter,k
   real :: rmax1, rmax2,cm1(3),cm2(3)
@@ -34,6 +34,132 @@ module interaction
   real :: c0,c1(3),c2(3,3),c3(3,3,3), c0new,c1new(3),c2new(3,3),c3new(3,3,3)
   logical :: nodesAreEqual, flag
   integer :: regnodechild(100000), splitnodeindex,regnodeindex,newnodeindex1,newnodeindex2,start,numthreads
+  integer, allocatable :: particlesforsum(:),istacklocal(:)
+  logical :: node1empty, node2empty
+  logical, allocatable :: threadworking(:)
+
+
+  quads(:) = 0.0
+  counter = 0
+
+  fnode(:) = 0.0
+  particleindex = 0.0
+  particleindex2 = 0.0
+
+  node1empty = .true.
+  node2empty = .true.
+
+  regnodechild(:) = 0.
+  c0 = 0.
+  c1 = 0.
+  c2 = 0.
+  c3 = 0.
+  c0new = 0.
+  c1new = 0.
+  c2new = 0.
+  c3new = 0.
+
+  ! Push the root node to the top of the stack 
+  stack(top)% nodeindex1 = 1
+  stack(top)% nodeindex2 = 1
+
+   print*, "top is: ", top 
+   print*, "Before openmp loop"
+   numthreads = 1
+   ! get number of OpenMPthreads
+   !$omp parallel default(none) shared(numthreads)
+     numthreads = omp_get_num_threads()
+   !$omp end parallel
+   allocate(threadworking(numthreads))
+   allocate(istacklocal(numthreads))
+   threadworking = .true.
+
+   print*, "Number of threads is: ", numthreads
+   istacklocal = 0
+
+   !$omp parallel default(shared) &
+   !$omp shared(top,nodes,x,a,m)
+   !$omp single 
+    do while (top > 0)
+      ! Migrate to lock free stack at some point 
+      !$omp critical 
+        nodeindex1 = stack(top) % nodeindex1
+        nodeindex2 = stack(top) % nodeindex2
+        top = top - 1
+      !$omp end critical 
+      ! NODES ARE EQUAL but not leaf nodes then split into MI between children (i.e root)
+      if (nodeindex1 == nodeindex2 .and. nodes(nodeindex1) % isLeaf .eqv. .false.) then 
+        ! AT MOST 36 Interactions 
+      ! 64 in this case but some will be duplicates ???
+        start = 1
+        do i=start,8
+          do j=start,8
+
+        ! Get the index of the sub-cells
+         !print*, "i, j: "
+         !print*, i
+         !print*, j
+         !print*, nodes(nodeindex1) % children(i)
+         !print*, nodes(nodeindex2) % children(j)
+        ! If children exist
+        if (nodes(nodeindex1) % children(i) .NE. 0 .AND. nodes(nodeindex2) % children(j) .NE. 0) then 
+         !nodeindex1 = nodes(nodeindex1) % children(i)
+         !nodeindex2 = nodes(nodeindex2) % children(j)
+         !print*, nodeindex1
+         !print*, nodeindex2
+         !counter = counter + 1
+         !print*,"Counter: ", counter
+
+          ! Get the sub-cells
+          !newnode1 = nodes(nodeindex1)
+          !newnode2 = nodes(nodeindex2)
+          newnodeindex1 = nodes(nodeindex1) % children(i)
+          newnodeindex2 = nodes(nodeindex2) % children(j)
+
+          !print*, "Nodeindex1: ", newnodeindex1, "Nodeindex2: ", newnodeindex2
+
+          !print*, "Interact called"
+          ! call the interact for each of the sub-cells
+          !call interact(newnodeindex1, newnodeindex2, nodes,x,m,a,nopart)
+          ! If local stack is sufficently full push to global stack 
+          !$omp critical 
+          top = top + 1
+          stack(top) % nodeindex1 = newnodeindex1
+          stack(top) % nodeindex2 = newnodeindex2 
+          !$omp end critical 
+
+        endif 
+
+          enddo 
+          start = start + 1
+        enddo
+
+      endif 
+
+      enddo 
+   !$omp end single 
+   !$omp end parallel 
+
+
+end subroutine interact_yokota
+
+ subroutine interact_stack(nodes,x,m,a,nopart)
+  use omp_lib
+  integer, intent(in) :: nopart
+  type(octreenode), intent(inout) :: nodes(:)
+  real, intent(in) :: x(3,nopart),m(nopart)
+  real, intent(inout) :: a(3,nopart)
+  integer :: stacksize, top, iter,nodeindex1,nodeindex2
+  type(interact_stack_data) :: stack(1000), stacklocal(1000)
+  type(octreenode) :: newnode1,newnode2, splitnode, regnode
+  integer :: i, j, counter,k
+  real :: rmax1, rmax2,cm1(3),cm2(3)
+  real :: fnode(20),quads(6)
+  real :: dr,dx(3),dy,dz,totmass,r,r2
+  integer :: particleindex(10),particleindex2(10) 
+  real :: c0,c1(3),c2(3,3),c3(3,3,3), c0new,c1new(3),c2new(3,3),c3new(3,3,3)
+  logical :: nodesAreEqual, flag
+  integer :: regnodechild(5000), splitnodeindex,regnodeindex,newnodeindex1,newnodeindex2,start,numthreads
   integer, allocatable :: particlesforsum(:),istacklocal(:)
   logical :: node1empty, node2empty
   logical, allocatable :: threadworking(:)
@@ -79,15 +205,17 @@ module interaction
    threadworking = .true.
 
    print*, "Number of threads is: ", numthreads
+   istacklocal = 0
 
   !$omp parallel default(none) &
-  !$omp shared(stack,top,x,a,m,nopart,nodes,numthreads,threadworking) &
+  !$omp shared(stack,top,x,a,m,nopart,nodes,numthreads,threadworking,istacklocal) &
   !$omp private(c0,c1,c2,c3,c0new,c1new,c2new,c3new) &
   !$omp private(splitnode,dx,k,nodeindex1,nodeindex2) &
   !$omp private(node1empty,node2empty,particleindex,start) &
   !$omp private(counter,newnodeindex1,newnodeindex2,cm1,cm2,dr) &
   !$omp private(fnode,totmass,r2,r,quads,rmax1,rmax2,splitnodeindex) &
-  !$omp private(regnode,regnodeindex,regnodechild,particleindex2)
+  !$omp private(regnode,regnodeindex,regnodechild,particleindex2,stacklocal)
+  !!$omp single 
 
   quads(:) = 0.0
   counter = 0
@@ -113,31 +241,92 @@ module interaction
   nodeindex1 = 0
   nodeindex2 = 0
 
-  do while (top > 0)
+
+  do while (any(istacklocal > 0) .or. top > 0)
+  !do while (top > 0)
     !print*, "Current itteration is: ",iter
     !iter = iter + 1
 
     !$ k=omp_get_thread_num() + 1
+    !print*,"Top",top
+    !print*,"Stack top:", istacklocal(k)
 
 
-    ! POP ITEM FROM STACK 
+    ! POP ITEM FROM STACK
     !$omp critical 
-    if (top > 0) then 
-      nodeindex1 = stack(top) % nodeindex1
-      nodeindex2 = stack(top) % nodeindex2
-      top = top - 1
-      threadworking(k) = .true.
-    else
-      threadworking(k) = .false.
-    endif
-    !$omp end critical  
+    if (istacklocal(k) > 0 ) then ! pop off local stack
+        !!$omp critical 
+        nodeindex1 = stacklocal(istacklocal(k)) % nodeindex1
+        nodeindex2 = stacklocal(istacklocal(k)) % nodeindex2
 
-     print*, "Thread number", k
-     print*, "Working? :", threadworking(k)
+        ! If the nodes are free then we can do work with them 
+        !if (nodes(nodeindex1) % nodefree .and. nodes(nodeindex2) % nodefree) then 
+          istacklocal(k) = istacklocal(k) - 1
+          threadworking(k) = .true.
+          nodes(nodeindex1) % nodefree  = .false.
+          nodes(nodeindex2) % nodefree  = .false.
+        !else 
+        !  threadworking(k) = .false.
+        !endif 
+        !!$omp critical  
+
+    else 
+      !!$omp critical 
+      if (top > 0) then 
+        !!$OMP TASK 
+        nodeindex1 = stack(top) % nodeindex1
+        nodeindex2 = stack(top) % nodeindex2
+          ! If the nodes are free then we can do work with them 
+        !if (nodes(nodeindex1) % nodefree .and. nodes(nodeindex2) % nodefree) then 
+          top = top - 1
+          threadworking(k) = .true.
+          nodes(nodeindex1) % nodefree  = .false.
+          nodes(nodeindex2) % nodefree  = .false.
+          
+        !endif 
+        
+        !!$OMP END TASK 
+      else
+        threadworking(k) = .false.
+      endif
+      !!$omp end critical  
+    endif 
+    !$omp end critical 
+
+     !print*, "Thread number", k
+     !print*, "Working? :", threadworking(k)
+     
 
     ! START OF INTERACTION 
+    if (nodeindex1 /= 0 .and. nodeindex2 /= 0) then
+    !print*, "Node index 1: ", nodeindex1
+    !print*,"Node index 2: ", nodeindex2 
+    !print*,"Working (1) (2): ", nodes(nodeindex1) % nodefree, nodes(nodeindex2) % nodefree 
+    endif
 
     if (threadworking(k)) then 
+     rmax1 = nodes(nodeindex1) % rmax
+     rmax2 = nodes(nodeindex2) % rmax 
+     quads(:) = 0.0
+     counter = 0
+
+     fnode(:) = 0.0
+     particleindex = 0.0
+     particleindex2 = 0.0
+  !particleindex1 = 0.
+
+     node1empty = .true.
+     node2empty = .true.
+
+     regnodechild(:) = 0.
+     c0 = 0.
+     c1 = 0.
+     c2 = 0.
+     c3 = 0.
+     c0new = 0.
+     c1new = 0.
+     c2new = 0.
+     c3new = 0.
     ! if nodes are equal 
     if (nodeindex1 == nodeindex2) then 
       ! if nodes are leaf node 
@@ -151,9 +340,13 @@ module interaction
         ! CALL DIRECT SUM 
         !print*,"Direct sum"
         !print*, x
-        if (.not. node1empty) then
-          !!$omp critical  
+        if (.not. node1empty) then 
           call get_accel(x,a,m,nopart,particleindex)
+          !UNLOCK NODES 
+          !print*, "Nodes unlocked"
+          nodes(nodeindex1) % nodefree = .true.
+          !nodes(nodeindex2) % nodefree = .true. 
+
           !!$omp end critical 
         endif 
 
@@ -193,20 +386,36 @@ module interaction
           ! call the interact for each of the sub-cells
           !call interact(newnodeindex1, newnodeindex2, nodes,x,m,a,nopart)
 
+
           ! PUSH NEW INTERACTIONS TO STACK 
+          ! Push to local stack 
+          !f (istacklocal(k) < 10) then 
+          if (all(threadworking)) then 
+            istacklocal(k) = istacklocal(k) + 1
+            stacklocal(istacklocal(k)) % nodeindex1 = newnodeindex1
+            stacklocal(istacklocal(k)) % nodeindex2 = newnodeindex2 
+          else
+          ! If local stack is sufficently full push to global stack 
           !$omp critical 
           top = top + 1
           stack(top) % nodeindex1 = newnodeindex1
           stack(top) % nodeindex2 = newnodeindex2 
           !$omp end critical 
+        endif 
 
         endif 
 
           enddo 
           start = start + 1
         enddo
+        ! UNLOCK THE NODES 
+        !print*,"Nodes unlocked"
+        nodes(nodeindex1) % nodefree  = .true.
+        nodes(nodeindex2) % nodefree  = .true.
 
     endif
+
+   
 
   elseif (well_separated(nodes(nodeindex1),nodes(nodeindex2))) then 
   !elseif (.false.) then 
@@ -276,7 +485,7 @@ module interaction
     c3 = 0.
     quads = 0.
     quads = nodes(nodeindex2) % quads 
-    call compute_fnode(dx(1),dx(2),dx(3),dr,totmass,quads,fnode)
+    !call compute_fnode(dx(1),dx(2),dx(3),dr,totmass,quads,fnode)
     call compute_coeff(dx(1),dx(2),dx(3),dr,totmass,quads,c0,c1,c2,c3)
     !$omp critical 
     nodes(nodeindex1) % fnode = fnode 
@@ -350,7 +559,7 @@ module interaction
     quads = nodes(nodeindex1) % quads 
 
 
-    call compute_fnode(dx(1),dx(2),dx(3),dr,totmass,quads,fnode)
+    !call compute_fnode(dx(1),dx(2),dx(3),dr,totmass,quads,fnode)
     call compute_coeff(dx(1),dx(2),dx(3),dr,totmass,quads,c0,c1,c2,c3)
 
     !$omp critical 
@@ -386,11 +595,22 @@ module interaction
 
     !STOP
 
+    ! UNLOCK THE NODES 
+    !print*,"Nodes unlocked"
+    
+
   endif 
+  ! UNLOCK THE NODES 
+  !print*,"Nodes unlocked"
+  nodes(nodeindex1) % nodefree  = .true.
+  nodes(nodeindex2) % nodefree  = .true.
 
   ! THE NODE WITH THE LARGER RMAX IS SPLIT; up to 8 new MI are created and processed 
   else
     !print*, "Split nodes"
+
+    !print*,"rmax1", rmax1
+    !print*, "rmax2",rmax2
 
     if (rmax1 > rmax2) then
      splitnode = nodes(nodeindex1)
@@ -416,16 +636,28 @@ module interaction
         !print*, "regnode index: ", regnodeindex
         !print*, "Split node index: ",splitnodeindex
 
-        ! PUSH INTERACTIONS TO STACK 
-        !$omp critical 
-        top = top + 1 
-        stack(top) % nodeindex1 = regnodeindex
-        stack(top) % nodeindex2 = splitnodeindex
-        !$omp end critical 
+        !if (istacklocal(k) < 10) then 
+         if (all(threadworking)) then 
+            istacklocal(k) = istacklocal(k) + 1
+            stacklocal(istacklocal(k)) % nodeindex1 = regnodeindex
+            stacklocal(istacklocal(k)) % nodeindex2 = splitnodeindex
+        else
+          ! If local stack is sufficently full push to global stack 
+          !$omp critical 
+          top = top + 1
+          stack(top) % nodeindex1 = regnodeindex
+          stack(top) % nodeindex2 = splitnodeindex 
+          !$omp end critical 
+        endif 
         !call interact(regnodeindex,splitnodeindex,nodes,x,m,a,nopart)
         !call interact(splitnodeindex,regnodeindex,nodes,x,m,a,nopart)
       endif 
     enddo
+
+     ! UNLOCK THE NODES 
+    !print*,"Nodes unlocked"
+    nodes(nodeindex1) % nodefree  = .true.
+    nodes(nodeindex2) % nodefree  = .true.
 
     ! LEAF-NODE NODE 
     elseif(splitnode % isLeaf .AND. .NOT. regnode % isLeaf) then
@@ -469,10 +701,15 @@ module interaction
         call get_accel_leafnode(x,a,m,nopart,regnodechild,particleindex)
         !print*, "Works fine "
         !!$omp end critical 
+
+        
       endif 
      !call get_accel_leafnode(x,a,m,np,particleindex,regnodechild)
 
      !return
+     ! UNLOCK THE NODES 
+     nodes(nodeindex1) % nodefree  = .true.
+     nodes(nodeindex2) % nodefree  = .true.
 
       ! Get children of a leaf node 
 
@@ -513,19 +750,30 @@ module interaction
       call get_accel_leafnode(x,a,m,nopart,particleindex,particleindex2)
       call get_accel_leafnode(x,a,m,nopart,particleindex2,particleindex)
       !!$omp end critical 
+      ! UNLOCK THE NODES 
+      !print*,"Nodes unlocked"
+      !nodes(nodeindex1) % nodefree  = .true.
+      !nodes(nodeindex2) % nodefree  = .true.
     endif 
     !call get_accel_leafnode(x,a,m,np,particleindex,particleindex2)
 
     !return
-
+    nodes(nodeindex1) % nodefree  = .true.
+    nodes(nodeindex2) % nodefree  = .true.
 
     endif 
 
 
-  endif  
+  endif
+  !nodes(nodeindex1) % nodefree  = .true.
+  !nodes(nodeindex2) % nodefree  = .true.  
 
   endif 
+   
   enddo 
+
+   
+  !!$OMP end single 
   
 
 
@@ -578,7 +826,7 @@ module interaction
 
 
 
-  print*, "Node indexes: ", nodeindex1, nodeindex2
+  !print*, "Node indexes: ", nodeindex1, nodeindex2
 
   ! STILL NEED TO COMPUTE BODY-BODY, BODY-NODE, NODE_BODY 
   ! BODY SELF INTERACTION IS IGNORED
@@ -594,7 +842,7 @@ module interaction
        endif  
      enddo 
     ! CALL DIRECT SUM 
-    print*,"Direct sum"
+    !print*,"Direct sum"
     !print*, x
     if (.not. node1empty) then
       call get_accel(x,a,m,nopart,particleindex)
@@ -624,7 +872,7 @@ module interaction
          !print*, nodeindex1
          !print*, nodeindex2
          counter = counter + 1
-         print*,"Counter: ", counter
+         !print*,"Counter: ", counter
 
           ! Get the sub-cells
           !newnode1 = nodes(nodeindex1)
@@ -632,7 +880,7 @@ module interaction
           newnodeindex1 = nodes(nodeindex1) % children(i)
           newnodeindex2 = nodes(nodeindex2) % children(j)
 
-          print*, "Nodeindex1: ", newnodeindex1, "Nodeindex2: ", newnodeindex2
+          !print*, "Nodeindex1: ", newnodeindex1, "Nodeindex2: ", newnodeindex2
 
           !print*, "Interact called"
           ! call the interact for each of the sub-cells
@@ -651,7 +899,7 @@ module interaction
  elseif (well_separated(nodes(nodeindex1),nodes(nodeindex2))) then 
   !elseif (.false.) then 
   !elseif (.true.) then
-    print*, "Well separated!"
+    !print*, "Well separated!"
 
 
     ! SYMMETRY CHECK 
@@ -691,7 +939,7 @@ module interaction
     !print*, "Cm of node1: ",cm1
     !print*, "Cm of node2: ",cm2
     !dx = cm1(1) - cm2(1)
-    print*, "Dx: ", dx
+    !print*, "Dx: ", dx
     !dy = cm1(2) - cm2(2)
     !print*, "Dy: ", dy
     !dz = cm1(3) - cm2(3)
@@ -723,7 +971,7 @@ module interaction
     call compute_coeff(dx(1),dx(2),dx(3),dr,totmass,quads,c0,c1,c2,c3)
     nodes(nodeindex1) % fnode = fnode 
 
-    print*,"C1: ", c1 * nodes(nodeindex1) % totalmass
+    !print*,"C1: ", c1 * nodes(nodeindex1) % totalmass
 
     ! store coeff for walk phase 
     !node1 % fnode = node1 % fnode + fnode
@@ -743,8 +991,8 @@ module interaction
 
     !return 
 
-    open(unit=77,file="wellseperated.txt")
-    write(77,*), "Node 1:", nodeindex1, "Node 2: ", nodeindex2
+    !open(unit=77,file="wellseperated.txt")
+    !write(77,*), "Node 1:", nodeindex1, "Node 2: ", nodeindex2
 
     cm2 = nodes(nodeindex1) % centerofmass
     cm1 = nodes(nodeindex2) % centerofmass
@@ -759,7 +1007,7 @@ module interaction
     !print*, "Cm of node1: ",cm1
     !print*, "Cm of node2: ",cm2
     !dx = cm1(1) - cm2(1)
-    print*, "Dx: ", dx
+    !print*, "Dx: ", dx
     !dy = cm1(2) - cm2(2)
     !print*, "Dy: ", dy
     !dz = cm1(3) - cm2(3)
@@ -793,7 +1041,7 @@ module interaction
     quads = nodes(nodeindex1) % quads 
     !call compute_fnode(dx(1),dx(2),dx(3),dr,totmass,quads,fnode)
     call compute_coeff(dx(1),dx(2),dx(3),dr,totmass,quads,c0,c1,c2,c3)
-    print*, "c1: ",c1* nodes(nodeindex2) % totalmass
+    !print*, "c1: ",c1* nodes(nodeindex2) % totalmass
 
     ! store coeff for walk phase 
     nodes(nodeindex2) % fnode = nodes(nodeindex2) % fnode + fnode
@@ -814,17 +1062,17 @@ module interaction
     !return 
     !STOP
 
-    open(unit=77,file="wellseperated.txt")
-    write(77,*), "Node 1:", nodeindex2, "Node 2: ", nodeindex1
+   !open(unit=77,file="wellseperated.txt")
+    !write(77,*), "Node 1:", nodeindex2, "Node 2: ", nodeindex1
 
-    print*,"Values for interaciton"
-    print*, c1 
-    print*,abs(c0 * nodes(nodeindex2) % totalmass) -  abs(c0new * totmass)
-    print*, abs(c1 *nodes(nodeindex2) % totalmass) - abs(c1new * totmass)
-    print*,abs(c2 * nodes(nodeindex2) % totalmass) - abs(c2new * totmass)
-    print*, abs(c3 * nodes(nodeindex2) % totalmass) - abs(c3new * totmass)
+   !print*,"Values for interaciton"
+    !print*, c1 
+    !print*,abs(c0 * nodes(nodeindex2) % totalmass) -  abs(c0new * totmass)
+    !print*, abs(c1 *nodes(nodeindex2) % totalmass) - abs(c1new * totmass)
+    !print*,abs(c2 * nodes(nodeindex2) % totalmass) - abs(c2new * totmass)
+    !print*, abs(c3 * nodes(nodeindex2) % totalmass) - abs(c3new * totmass)
 
-    print*, "Are values symmetric ? ", c1, c1new
+    !print*, "Are values symmetric ? ", c1, c1new
 
     if ( abs(c1(1) * nodes(nodeindex2) % totalmass) - abs(c1new(1) * totmass) > 1.e-18) stop
 
@@ -834,7 +1082,7 @@ module interaction
 
   ! THE NODE WITH THE LARGER RMAX IS SPLIT; up to 8 new MI are created and processed 
   else
-    print*, "Split nodes"
+    !print*, "Split nodes"
 
     if (rmax1 > rmax2) then
      splitnode = nodes(nodeindex1)
@@ -851,14 +1099,14 @@ module interaction
     ! process MI's on node and splitnode children
     if (.not. splitnode % isLeaf ) then 
     do i=1,8
-      print*, i
-      print*, splitnode % children(i)
+      !print*, i
+      !print*, splitnode % children(i)
       if (splitnode % children(i) /= 0 .and. nodes(splitnode % children(i)) % totalmass /= 0.) then 
         splitnodeindex = splitnode % children(i)
         !newnode1 = nodes(nodeindex1)
-        print*, "Internal splitnode case"
-        print*, "regnode index: ", regnodeindex
-        print*, "Split node index: ",splitnodeindex
+        !print*, "Internal splitnode case"
+        !print*, "regnode index: ", regnodeindex
+        !print*, "Split node index: ",splitnodeindex
         call interact(regnodeindex,splitnodeindex,nodes,x,m,a,nopart)
         !call interact(splitnodeindex,regnodeindex,nodes,x,m,a,nopart)
       endif 
@@ -892,7 +1140,7 @@ module interaction
 
       ! CALL DIRECT SUM
 
-      print*, node1empty, node2empty
+      !print*, node1empty, node2empty
 
 
       if (.NOT. node1empty .and. .not. node2empty) then
@@ -903,7 +1151,7 @@ module interaction
         call get_accel_leafnode(x,a,m,nopart,particleindex,regnodechild)
         !print*, "Crashing on second loop"
         call get_accel_leafnode(x,a,m,nopart,regnodechild,particleindex)
-        print*, "Works fine "
+        !print*, "Works fine "
       endif 
      !call get_accel_leafnode(x,a,m,np,particleindex,regnodechild)
 
@@ -913,7 +1161,7 @@ module interaction
 
     ! LEAF-NODE LEAF-NODE
     else 
-      print*, "Leafnode-Leafnode"
+      !print*, "Leafnode-Leafnode"
 
       node1empty = .true.
       node2empty = .true.

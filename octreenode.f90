@@ -61,6 +61,8 @@ module octreetype
     integer,  dimension(:),allocatable :: bodychildren
     ! points to the index of the last inserted body child
     integer :: bodychildpont
+    ! set to 0 if node is locked, 1 otherwise
+    logical :: nodefree = .true. 
 
     end type
     contains
