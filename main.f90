@@ -22,12 +22,12 @@ program nbody
       implicit none 
       type(octreenode), allocatable :: nodes(:)
       integer,parameter :: nopart = 100000 
-      real :: x(3, nopart)
-      real :: v(3, nopart)
-      real :: a(3, nopart)
-      real :: atest(3,nopart)
-      real :: poten(nopart)
-      real :: m(nopart)
+      real, allocatable :: x(:,:)
+      real, allocatable :: v(:,:)
+      real, allocatable :: a(:,:)
+      real, allocatable :: atest(:,:)
+      real, allocatable :: poten(:)
+      real, allocatable :: m(:)
       integer :: iter,output_freq
       real :: t,dt,tmax,dtnew
       real :: center(3)
@@ -37,7 +37,7 @@ program nbody
       integer :: rootnode,i,node1,node2
       real :: sumMass, cm(3)
       real :: c0,c1(3),c2(3,3),c3(3,3,3),rms, boxsize 
-      integer :: interactionlist(nopart,nopart), endnode
+      integer :: endnode
       integer :: currentparts,startwall,stopwall
       real :: asum(3),starteval, stopeval
 
@@ -71,6 +71,14 @@ program nbody
       !write(*,*) x(:,nodes(1) % data)
       !write(*,*) x(:,nodes(2) % data)
       
+      ! Should really be in a function 
+      allocate(x(3,nopart))
+      allocate(v(3,nopart))
+      allocate(a(3,nopart))
+      allocate(atest(3,nopart))
+      allocate(poten(nopart))
+      allocate(m(nopart))
+
 
       !STOP
       t = 0
@@ -83,9 +91,9 @@ program nbody
       cm = 0.0
       a = 0.
       atest = 0.
-      interactionlist = 0.
-      
-      ! PUT PARTICLE SETUP HERE
+      !interactionlist = 0.
+     
+            ! PUT PARTICLE SETUP HERE
       call init(x,v,m,nopart)
       call get_optimal_boxsize(x,m,nopart,boxsize,center)
       !STOP
@@ -120,12 +128,13 @@ program nbody
       
       print*,"Wall time start: ", wallclock()
       call cpu_time(starteval)
-      !call interact(node1,node2,nodes,x,m,a,nopart)
+     !call interact(node1,node2,nodes,x,m,a,nopart)
       call interact_stack(nodes,x,m,a,nopart)
       call cpu_time(stopeval)
       print*,"Wall time total: ", wallclock()
       print*,"Cpu time: ", stopeval-starteval
-      STOP
+      !STOP
+      read(*,*)
       !print*,nodes(1) % c3
       !print*, "Accel:"
       !print*, a

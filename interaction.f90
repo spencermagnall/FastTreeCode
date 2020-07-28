@@ -150,7 +150,7 @@ end subroutine interact_yokota
   real, intent(in) :: x(3,nopart),m(nopart)
   real, intent(inout) :: a(3,nopart)
   integer :: stacksize, top, iter,nodeindex1,nodeindex2
-  type(interact_stack_data) :: stack(1000), stacklocal(1000)
+  type(interact_stack_data) :: stack(10000), stacklocal(1000)
   type(octreenode) :: newnode1,newnode2, splitnode, regnode
   integer :: i, j, counter,k
   real :: rmax1, rmax2,cm1(3),cm2(3)
@@ -167,27 +167,6 @@ end subroutine interact_yokota
 
   top = 1
   iter = 1
-
-
-  quads(:) = 0.0
-  counter = 0
-
-  fnode(:) = 0.0
-  particleindex = 0.0
-  particleindex2 = 0.0
-
-  node1empty = .true.
-  node2empty = .true.
-
-  regnodechild(:) = 0.
-  c0 = 0.
-  c1 = 0.
-  c2 = 0.
-  c3 = 0.
-  c0new = 0.
-  c1new = 0.
-  c2new = 0.
-  c3new = 0.
 
   ! Push the root node to the top of the stack 
   stack(top)% nodeindex1 = 1
@@ -217,29 +196,29 @@ end subroutine interact_yokota
   !$omp private(regnode,regnodeindex,regnodechild,particleindex2,stacklocal)
   !!$omp single 
 
-  quads(:) = 0.0
-  counter = 0
+  !quads(:) = 0.0
+  !counter = 0
 
-  fnode(:) = 0.0
-  particleindex = 0.0
-  particleindex2 = 0.0
+  !fnode(:) = 0.0
+  !particleindex = 0.0
+  !particleindex2 = 0.0
 
-  node1empty = .true.
-  node2empty = .true.
+  !node1empty = .true.
+  !node2empty = .true.
 
-  regnodechild(:) = 0.
-  c0 = 0.
-  c1 = 0.
-  c2 = 0.
-  c3 = 0.
-  c0new = 0.
-  c1new = 0.
-  c2new = 0.
-  c3new = 0.
-  rmax1 = 0.
-  rmax2 = 0.
-  nodeindex1 = 0
-  nodeindex2 = 0
+  !regnodechild(:) = 0.
+  !c0 = 0.
+  !c1 = 0.
+  !c2 = 0.
+  !c3 = 0.
+  !c0new = 0.
+  !c1new = 0.
+  !c2new = 0.
+  !c3new = 0.
+  !rmax1 = 0.
+  !rmax2 = 0.
+  !nodeindex1 = 0
+  !nodeindex2 = 0
 
 
   do while (any(istacklocal > 0) .or. top > 0)
@@ -253,8 +232,8 @@ end subroutine interact_yokota
 
 
     ! POP ITEM FROM STACK
-    !$omp critical 
-    if (istacklocal(k) > 0 ) then ! pop off local stack
+    !!$omp critical 
+   if (istacklocal(k) > 0 ) then ! pop off local stack
         !!$omp critical 
         nodeindex1 = stacklocal(istacklocal(k)) % nodeindex1
         nodeindex2 = stacklocal(istacklocal(k)) % nodeindex2
@@ -271,7 +250,7 @@ end subroutine interact_yokota
         !!$omp critical  
 
     else 
-      !!$omp critical 
+      !$omp critical (stack)
       if (top > 0) then 
         !!$OMP TASK 
         nodeindex1 = stack(top) % nodeindex1
@@ -286,23 +265,26 @@ end subroutine interact_yokota
         !endif 
         
         !!$OMP END TASK 
-      else
+        !else
+        !  threadworking(k) = .false.
+        !endif
+      else 
         threadworking(k) = .false.
       endif
-      !!$omp end critical  
+      !$omp end critical (stack)
     endif 
-    !$omp end critical 
+    !!$omp end critical 
 
      !print*, "Thread number", k
      !print*, "Working? :", threadworking(k)
      
 
     ! START OF INTERACTION 
-    if (nodeindex1 /= 0 .and. nodeindex2 /= 0) then
+    !if (nodeindex1 /= 0 .and. nodeindex2 /= 0) then
     !print*, "Node index 1: ", nodeindex1
     !print*,"Node index 2: ", nodeindex2 
     !print*,"Working (1) (2): ", nodes(nodeindex1) % nodefree, nodes(nodeindex2) % nodefree 
-    endif
+    !endif
 
     if (threadworking(k)) then 
      rmax1 = nodes(nodeindex1) % rmax
@@ -341,7 +323,9 @@ end subroutine interact_yokota
         !print*,"Direct sum"
         !print*, x
         if (.not. node1empty) then 
+          !!$omp critical 
           call get_accel(x,a,m,nopart,particleindex)
+          !!$omp end critical 
           !UNLOCK NODES 
           !print*, "Nodes unlocked"
           nodes(nodeindex1) % nodefree = .true.
@@ -349,6 +333,7 @@ end subroutine interact_yokota
 
           !!$omp end critical 
         endif 
+        nodes(nodeindex1) % nodefree = .true.
 
 
         ! CELL SELF INTERACTION IS SPLIT INTO MI BETWEEN SUBNODES
@@ -389,19 +374,19 @@ end subroutine interact_yokota
 
           ! PUSH NEW INTERACTIONS TO STACK 
           ! Push to local stack 
-          !f (istacklocal(k) < 10) then 
-          if (all(threadworking)) then 
+          if (istacklocal(k) < 3) then 
+          !if (all(threadworking)) then 
             istacklocal(k) = istacklocal(k) + 1
             stacklocal(istacklocal(k)) % nodeindex1 = newnodeindex1
             stacklocal(istacklocal(k)) % nodeindex2 = newnodeindex2 
           else
           ! If local stack is sufficently full push to global stack 
-          !$omp critical 
+          !$omp critical (stack)
           top = top + 1
           stack(top) % nodeindex1 = newnodeindex1
           stack(top) % nodeindex2 = newnodeindex2 
-          !$omp end critical 
-        endif 
+          !$omp end critical (stack)
+          endif 
 
         endif 
 
@@ -487,7 +472,7 @@ end subroutine interact_yokota
     quads = nodes(nodeindex2) % quads 
     !call compute_fnode(dx(1),dx(2),dx(3),dr,totmass,quads,fnode)
     call compute_coeff(dx(1),dx(2),dx(3),dr,totmass,quads,c0,c1,c2,c3)
-    !$omp critical 
+    !$omp critical (node)
     nodes(nodeindex1) % fnode = fnode 
 
     ! store coeff for walk phase 
@@ -500,7 +485,7 @@ end subroutine interact_yokota
     nodes(nodeindex1) % c1 = nodes(nodeindex1)%c1 + c1 
     nodes(nodeindex1) % c2 = nodes(nodeindex1) % c2 + c2 
     nodes(nodeindex1) % c3 = nodes(nodeindex1) % c3 + c3 
-    !$omp end critical 
+    !$omp end critical (node)
 
     ! print poten
     !print*, "Poten is: ", fnode(20)
@@ -547,10 +532,10 @@ end subroutine interact_yokota
      !print*, "Real force: "
      !print*, -totmass*(1/((r2)**1.5))*dx * nodes(nodeindex2) %totalmass
 
-    c0new = c0
-    c1new = c1
-    c2new = c2 
-    c3new = c3 
+    !c0new = c0
+    !c1new = c1
+    !c2new = c2 
+    !c3new = c3 
     c0 = 0.
     c1 = 0.
     c2 = 0.
@@ -562,7 +547,7 @@ end subroutine interact_yokota
     !call compute_fnode(dx(1),dx(2),dx(3),dr,totmass,quads,fnode)
     call compute_coeff(dx(1),dx(2),dx(3),dr,totmass,quads,c0,c1,c2,c3)
 
-    !$omp critical 
+    !$omp critical (node)
     ! store coeff for walk phase 
     nodes(nodeindex2) % fnode = nodes(nodeindex2) % fnode + fnode
     !print*, "Stored acccel: "
@@ -573,7 +558,7 @@ end subroutine interact_yokota
     nodes(nodeindex2) % c1 = nodes(nodeindex2)%c1 + c1
     nodes(nodeindex2) % c2 = nodes(nodeindex2) % c2 + c2
     nodes(nodeindex2) % c3 = nodes(nodeindex2) % c3 + c3
-    !$omp end critical 
+    !$omp end critical (node)
 
     ! print poten
     !print*, "Poten is: ", fnode(20)
@@ -636,18 +621,18 @@ end subroutine interact_yokota
         !print*, "regnode index: ", regnodeindex
         !print*, "Split node index: ",splitnodeindex
 
-        !if (istacklocal(k) < 10) then 
-         if (all(threadworking)) then 
+        if (istacklocal(k) < 10) then 
+         !if (all(threadworking)) then 
             istacklocal(k) = istacklocal(k) + 1
             stacklocal(istacklocal(k)) % nodeindex1 = regnodeindex
             stacklocal(istacklocal(k)) % nodeindex2 = splitnodeindex
-        else
+         else
           ! If local stack is sufficently full push to global stack 
-          !$omp critical 
+          !$omp critical (stack)
           top = top + 1
           stack(top) % nodeindex1 = regnodeindex
           stack(top) % nodeindex2 = splitnodeindex 
-          !$omp end critical 
+          !$omp end critical (stack)
         endif 
         !call interact(regnodeindex,splitnodeindex,nodes,x,m,a,nopart)
         !call interact(splitnodeindex,regnodeindex,nodes,x,m,a,nopart)
@@ -697,8 +682,11 @@ end subroutine interact_yokota
         !print*, "Regnode children: ", regnodechild
         !!$omp critical 
         call get_accel_leafnode(x,a,m,nopart,particleindex,regnodechild)
+        !!$omp end critical 
         !print*, "Crashing on second loop"
+        !!$omp critical 
         call get_accel_leafnode(x,a,m,nopart,regnodechild,particleindex)
+        !!$omp end critical 
         !print*, "Works fine "
         !!$omp end critical 
 
@@ -748,6 +736,8 @@ end subroutine interact_yokota
       !call get_accel(x,a,m,np,particleindex,particleindex2)
       !!$omp critical 
       call get_accel_leafnode(x,a,m,nopart,particleindex,particleindex2)
+      !!$omp end critical 
+      !!$omp critical 
       call get_accel_leafnode(x,a,m,nopart,particleindex2,particleindex)
       !!$omp end critical 
       ! UNLOCK THE NODES 
