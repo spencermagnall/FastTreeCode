@@ -21,7 +21,7 @@ program nbody
       use timing
       implicit none 
       type(octreenode), allocatable :: nodes(:)
-      integer,parameter :: nopart = 100000 
+      integer,parameter :: nopart = 10000 
       real, allocatable :: x(:,:)
       real, allocatable :: v(:,:)
       real, allocatable :: a(:,:)
@@ -49,7 +49,7 @@ program nbody
       asum(3) = 0.
       deltap = 0. 
       currentparts = nopart
-      !call read_ascii(x,v,m,nopart,"cosmoinput")
+      
       call test_gravity()
       !call test_coeff_trans()
       call test_trans_error()
@@ -82,9 +82,9 @@ program nbody
 
       !STOP
       t = 0
-      dt = 0.01
+      dt = 1
       iter = 0 
-      tmax = 1
+      tmax = 10
       output_freq = 1 
       rootNode = 1
       sumMass = 0.0
@@ -93,7 +93,8 @@ program nbody
       atest = 0.
       !interactionlist = 0.
      
-            ! PUT PARTICLE SETUP HERE
+      ! PUT PARTICLE SETUP HERE
+      !call read_ascii(x,v,m,nopart,"cosmoin")
       call init(x,v,m,nopart)
       call get_optimal_boxsize(x,m,nopart,boxsize,center)
       !STOP
@@ -129,7 +130,8 @@ program nbody
       print*,"Wall time start: ", wallclock()
       call cpu_time(starteval)
      !call interact(node1,node2,nodes,x,m,a,nopart)
-      call interact_stack(nodes,x,m,a,nopart)
+      !call interact_stack(nodes,x,m,a,nopart)
+      call interact_nolock(nodes,x,m,a,nopart)
       call cpu_time(stopeval)
       print*,"Wall time total: ", wallclock()
       print*,"Cpu time: ", stopeval-starteval

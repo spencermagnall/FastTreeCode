@@ -54,8 +54,8 @@ module step_leapfrog
         !if (endnode /= 65) stop
         !stop
         call get_com(x,v,m,np,nodes,rootnode,sumMass,cm)
-        call compute_quads(x,m,np,nodes,endnode)
-        call get_accel_test(x,atest,m,np)
+        !call compute_quads(x,m,np,nodes,endnode)
+        !call get_accel_test(x,atest,m,np)
         rootnode = 1
         rmax = 0.
         cm = 0.
