@@ -5,6 +5,7 @@ module potendirect
 
   subroutine get_accel (x,a,m,np,particlesindex1)
   ! the index's of particles (BODIES)
+  !!$ use omputils
   integer, intent(in) :: particlesindex1(10), np
   real, intent(in) :: x(3,np) 
   real, intent(inout) :: a(3, np)
@@ -32,7 +33,7 @@ module potendirect
   !open(unit=56,file="interactions.txt")
   ! Put all the particles into one list 
 
-  h = 0.1
+  h = 0.03
   ! in this case we don't want to reset a
   ! but is should be done at the start of each step
   ! THIS IS WRONG!!
@@ -51,7 +52,9 @@ module potendirect
      r2 = dot_product(dx,dx)
      r  = sqrt(r2)
      !$omp critical (accel)
+     !!$ call omp_set_lock(ipart_omp_lock_accel(indexi))
      a(:,indexi) = a(:,indexi) - m(indexj)*(1/((r2 + h**2)**1.5))*dx
+     !!$ call omp_unset_lock(ipart_omp_lock_accel(indexi))
      !$omp end critical (accel)
      !print*,"Accel direct: ", a(:,indexi)
      !print*, "A mag: ", sqrt(dot_product(m(indexj)*(1/((r2*r)))*dx, m(indexj)*(1/((r2*r)))*dx))
@@ -68,6 +71,7 @@ module potendirect
 end subroutine get_accel
 
 subroutine get_accel_leafnode(x,a,m,np,particlesindex1,particlesindex2)
+  !$use omputils
   integer, intent(in) :: np, particlesindex1(:), particlesindex2(:)
   real, intent(in) :: x(3,np), m(:)
   real, intent(inout) :: a(3,np)
@@ -76,7 +80,7 @@ subroutine get_accel_leafnode(x,a,m,np,particlesindex1,particlesindex2)
   integer :: indexi,indexj
 
    !h = 1.
-  h = 0.1
+  h = 0.03
   ! in this case we don't want to reset a
   ! but is should be done at the start of each step
   ! THIS IS WRONG!!
@@ -185,7 +189,7 @@ subroutine get_accel_test(x,a,m,np)
   integer :: i,j
 
   !h = 0.
-  h = 0.1
+  h = 0.03
 
   ! SUBOUTINE FOR TESTING THAT ACCEL IS COMPUTED CORRECTLY 
   a = 0.

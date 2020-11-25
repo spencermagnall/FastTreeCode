@@ -5,6 +5,7 @@ module interaction
  use potendirect 
  ! This is just for testing remove later
  use evaluate  
+ use timing
 
  implicit none  
 
@@ -25,6 +26,7 @@ module interaction
 
  subroutine interact_nolock(nodes,x,m,a,nopart)
   use omp_lib
+  !$ use omputils
   integer, intent(in) :: nopart
   type(octreenode), intent(inout) :: nodes(:)
   real, intent(in) :: x(3,nopart),m(nopart)
@@ -90,8 +92,14 @@ module interaction
    !stacklocal = 0
    nodeforthread = 0
 
+   ! Initialise omp locks 
+   !$ call init_omp()
+
+   print*,"Wall time start: ", wallclock()
+
    !$omp parallel default(none) &
    !$omp shared(stack,top,x,a,m,nopart,nodes,numthreads,threadworking,istacklocal) &
+   !$omp shared(ipart_omp_lock) &
    !$omp private(c0,c1,c2,c3,c0new,c1new,c2new,c3new) &
    !$omp private(splitnode,dx,k,nodeindex1,nodeindex2) &
    !$omp private(node1empty,node2empty,particleindex,start) &
@@ -134,16 +142,13 @@ module interaction
         !if (nodes(nodeindex1) % nodefree .and. nodes(nodeindex2) % nodefree) then 
           !top = top - 1
           call global_to_local(stack,stacklocal,k,istacklocal,top)
-          threadworking(k) = .false.
+          ! pop some work of the local stack 
+          nodeindex1 = stacklocal(istacklocal(k)) % nodeindex1
+          nodeindex2 = stacklocal(istacklocal(k)) % nodeindex2
+          istacklocal(k) = istacklocal(k) - 1
+          threadworking(k) = .true.
           !nodes(nodeindex1) % nodefree  = .false.
           !nodes(nodeindex2) % nodefree  = .false.
-          
-        !endif 
-        
-        !!$OMP END TASK 
-        !else
-        !  threadworking(k) = .false.
-        !endif
       else 
         threadworking(k) = .false.
       endif
@@ -174,8 +179,8 @@ module interaction
     c2new = 0.
     c3new = 0.
     updatestackpont = .true. 
-    print*, "nodeindex1: ", nodeindex1
-    print*, "nodeindex2: ", nodeindex2
+    !print*, "nodeindex1: ", nodeindex1
+    !print*, "nodeindex2: ", nodeindex2
 
    
 
@@ -204,7 +209,7 @@ module interaction
 
       ! OTHERWISE SPLIT NODES 
       else
-        print*, "Splitting"
+        !print*, "Splitting"
         do i=1,8
           ! THREAD HAS TO TAKE ALL INTERACTIONS FOR THAT NODE 
           newnodeindex1 = nodes(nodeindex1) % children(i)
@@ -278,10 +283,15 @@ module interaction
       call compute_coeff(dx(1),dx(2),dx(3),dr,totmass,quads,c0,c1,c2,c3)
       !nodes(nodeindex1) % fnode = fnode 
 
+      !print*, "Crashing on lock section "
+      !print*, "Size: ", ipart_omp_lock(nodeindex1)
+      !$ call omp_set_lock(ipart_omp_lock(nodeindex1))
+      !print*, "Entered locking"
       nodes(nodeindex1) % c0 =  nodes(nodeindex1)%c0 + c0 
       nodes(nodeindex1) % c1 = nodes(nodeindex1)%c1 + c1 
       nodes(nodeindex1) % c2 = nodes(nodeindex1) % c2 + c2 
       nodes(nodeindex1) % c3 = nodes(nodeindex1) % c3 + c3 
+      !$ call omp_unset_lock(ipart_omp_lock(nodeindex1))
 
 
     endif 
@@ -305,16 +315,16 @@ module interaction
 
     ! process MI's on node and splitnode children
     if (.not. splitnode % isLeaf ) then 
-    !$omp critical (stack)
-    print*, "Splitting 2 "
+    !!$omp critical (stack)
+    !print*, "Splitting 2 "
     do i=1,8
       !print*, i
       !print*, splitnode % children(i)
       !!$omp critical (stack)
       if (splitnode % children(i) /= 0 .and. nodes(splitnode % children(i)) % totalmass /= 0.) then 
         splitnodeindex = splitnode % children(i)
-        print*, "Splitnode index: ", splitnodeindex
-        print*,"regnodeindex: ", regnodeindex
+        !print*, "Splitnode index: ", splitnodeindex
+        !print*,"regnodeindex: ", regnodeindex
         ! CHECK FOR WHICH NODE IS NODE 1
         if (regnodeindex == nodeindex1) then 
 
@@ -323,26 +333,26 @@ module interaction
             stacklocal(istacklocal(k)) % nodeindex1 = regnodeindex
             stacklocal(istacklocal(k)) % nodeindex2 = splitnodeindex
         else 
-            !!$omp critical (stack)
+            !$omp critical (stack)
             !if (updatestackpont) then
               top = top + 1
               updatestackpont = .false.
               stack(top) % interactions = 0
             !endif
             !print*, "top: ", top 
-            print*, "i: ",i  
+            !print*, "i: ",i  
             stack(top) % nodeindex1 = splitnodeindex
             stack(top) % interactions(i) = regnodeindex 
-            print*, "These values pushed: ", stack(top) % nodeindex1
-            print*, stack(top) % interactions
-            print*, "top is: ", top 
-            !!$omp end critical (stack) 
+            !print*, "These values pushed: ", stack(top) % nodeindex1
+            !print*, stack(top) % interactions
+            !print*, "top is: ", top 
+            !$omp end critical (stack) 
             !print*,"stack: ", stack(1:top)
             !stop 
         endif 
       endif  
     enddo
-    !$omp end critical (stack)
+    !!$omp end critical (stack)
 
     ! LEAF-NODE NODE 
     elseif(splitnode % isLeaf .AND. .NOT. regnode % isLeaf) then
@@ -432,6 +442,8 @@ module interaction
 
    !$omp end parallel 
 
+   print*,"Wall time : ", wallclock()
+
 
 
 
@@ -457,6 +469,7 @@ module interaction
   integer, allocatable :: particlesforsum(:),istacklocal(:)
   logical :: node1empty, node2empty
   logical, allocatable :: threadworking(:)
+
 
 
   quads(:) = 0.0
@@ -565,12 +578,13 @@ end subroutine interact_yokota
 
  subroutine interact_stack(nodes,x,m,a,nopart)
   use omp_lib
+  !$ use omputils
   integer, intent(in) :: nopart
   type(octreenode), intent(inout) :: nodes(:)
   real, intent(in) :: x(3,nopart),m(nopart)
   real, intent(inout) :: a(3,nopart)
   integer :: stacksize, top, iter,nodeindex1,nodeindex2
-  type(interact_stack_data) :: stack(10000), stacklocal(1000)
+  type(interact_stack_data) :: stack(10000), stacklocal(10000)
   type(octreenode) :: newnode1,newnode2, splitnode, regnode
   integer :: i, j, counter,k
   real :: rmax1, rmax2,cm1(3),cm2(3)
@@ -579,10 +593,11 @@ end subroutine interact_yokota
   integer :: particleindex(10),particleindex2(10) 
   real :: c0,c1(3),c2(3,3),c3(3,3,3), c0new,c1new(3),c2new(3,3),c3new(3,3,3)
   logical :: nodesAreEqual, flag
-  integer :: regnodechild(5000), splitnodeindex,regnodeindex,newnodeindex1,newnodeindex2,start,numthreads
+  integer :: regnodechild(100000), splitnodeindex,regnodeindex,newnodeindex1,newnodeindex2,start,numthreads
   integer, allocatable :: particlesforsum(:),istacklocal(:)
   logical :: node1empty, node2empty
   logical, allocatable :: threadworking(:)
+  real :: threadcounts, idlecounts 
   
 
   top = 1
@@ -606,14 +621,24 @@ end subroutine interact_yokota
    print*, "Number of threads is: ", numthreads
    istacklocal = 0
 
+    ! Initialise omp locks 
+   !$ call init_omp()
+
+   ! Want to start timing from the parallel loop 
+
+  print*,"Wall time start: ", wallclock()
   !$omp parallel default(none) &
+  !!$omp threadprivate()
+  !$omp shared(ipart_omp_lock) &
   !$omp shared(stack,top,x,a,m,nopart,nodes,numthreads,threadworking,istacklocal) &
   !$omp private(c0,c1,c2,c3,c0new,c1new,c2new,c3new) &
   !$omp private(splitnode,dx,k,nodeindex1,nodeindex2) &
   !$omp private(node1empty,node2empty,particleindex,start) &
   !$omp private(counter,newnodeindex1,newnodeindex2,cm1,cm2,dr) &
   !$omp private(fnode,totmass,r2,r,quads,rmax1,rmax2,splitnodeindex) &
-  !$omp private(regnode,regnodeindex,regnodechild,particleindex2,stacklocal)
+  !$omp private(regnode,regnodeindex,regnodechild,particleindex2,stacklocal) &
+  !$omp private(threadcounts,idlecounts)
+
   !!$omp single 
 
   !quads(:) = 0.0
@@ -640,8 +665,11 @@ end subroutine interact_yokota
   !nodeindex1 = 0
   !nodeindex2 = 0
 
+  threadcounts = 0
+  idlecounts = 0
 
   do while (any(istacklocal > 0) .or. top > 0)
+    threadcounts = threadcounts + 1 
   !do while (top > 0)
     !print*, "Current itteration is: ",iter
     !iter = iter + 1
@@ -690,6 +718,7 @@ end subroutine interact_yokota
         !endif
       else 
         threadworking(k) = .false.
+        idlecounts = idlecounts + 1
       endif
       !$omp end critical (stack)
     endif 
@@ -709,7 +738,7 @@ end subroutine interact_yokota
     if (threadworking(k)) then 
      rmax1 = nodes(nodeindex1) % rmax
      rmax2 = nodes(nodeindex2) % rmax 
-     quads(:) = 0.0
+     quads(:) = nodes(nodeindex2) % quads
      counter = 0
 
      fnode(:) = 0.0
@@ -748,12 +777,12 @@ end subroutine interact_yokota
           !!$omp end critical 
           !UNLOCK NODES 
           !print*, "Nodes unlocked"
-          nodes(nodeindex1) % nodefree = .true.
+          !nodes(nodeindex1) % nodefree = .true.
           !nodes(nodeindex2) % nodefree = .true. 
 
           !!$omp end critical 
         endif 
-        nodes(nodeindex1) % nodefree = .true.
+        !nodes(nodeindex1) % nodefree = .true.
 
 
         ! CELL SELF INTERACTION IS SPLIT INTO MI BETWEEN SUBNODES
@@ -794,7 +823,8 @@ end subroutine interact_yokota
 
           ! PUSH NEW INTERACTIONS TO STACK 
           ! Push to local stack 
-          if (istacklocal(k) < 3) then 
+          ! Evenly divide new work between threads 
+          if (istacklocal(k) < int(36/numthreads)) then 
           !if (all(threadworking)) then 
             istacklocal(k) = istacklocal(k) + 1
             stacklocal(istacklocal(k)) % nodeindex1 = newnodeindex1
@@ -815,8 +845,8 @@ end subroutine interact_yokota
         enddo
         ! UNLOCK THE NODES 
         !print*,"Nodes unlocked"
-        nodes(nodeindex1) % nodefree  = .true.
-        nodes(nodeindex2) % nodefree  = .true.
+        !nodes(nodeindex1) % nodefree  = .true.
+        !nodes(nodeindex2) % nodefree  = .true.
 
     endif
 
@@ -856,7 +886,8 @@ end subroutine interact_yokota
     !print*, nodes(nodeindex1) % data
     !print*, "particles in node 2"
     !print*, nodes(nodeindex2) % data
-
+    print*, "nodeindex1: ", nodeindex1
+    print*, "nodeindex2: ", nodeindex2
 
     call get_dx_dr(cm1,cm2,dx,dr)
     !print*, "Cm of node1: ",cm1
@@ -875,11 +906,12 @@ end subroutine interact_yokota
     totmass = nodes(nodeindex2) % totalmass
     !print*, "Totalmass: ",totmass
     !totmass = 1.0
-
+    print*, "dx: ", dx
+    print*, "dr: ", dr 
     ! calculate real accel here 
     !print*, "Real accel: "
-     r2 = dot_product(dx,dx)
-     r  = sqrt(r2)
+     ! r2 = dot_product(dx,dx)
+     ! r  = 1./sqrt(r2)
      !print*, -totmass*(1/((r2)**1.5))*dx 
      !print*, "Real force: "
      !print*, -totmass*(1/((r2)**1.5))*dx * nodes(nodeindex1) %totalmass
@@ -890,22 +922,67 @@ end subroutine interact_yokota
     c3 = 0.
     quads = 0.
     quads = nodes(nodeindex2) % quads 
-    !call compute_fnode(dx(1),dx(2),dx(3),dr,totmass,quads,fnode)
-    call compute_coeff(dx(1),dx(2),dx(3),dr,totmass,quads,c0,c1,c2,c3)
-    !$omp critical (node)
-    nodes(nodeindex1) % fnode = fnode 
+    call compute_fnode(dx(1),dx(2),dx(3),dr,totmass,quads,fnode)
+    !call compute_coeff(dx(1),dx(2),dx(3),dr,totmass,quads,c0,c1,c2,c3)
+
+    !!$omp critical (node)
+    
 
     ! store coeff for walk phase 
     !node1 % fnode = node1 % fnode + fnode
     !print*, "Stored acccel: "
-    nodes(nodeindex1) % c0 =  nodes(nodeindex1)%c0 + c0 
+    !$ call omp_set_lock(ipart_omp_lock(nodeindex1))
+    !nodes(nodeindex1) % c0 =  nodes(nodeindex1)%c0 + c0 
+    nodes(nodeindex1) % fnode =nodes(nodeindex1) % fnode + fnode 
+    print*, "fnode(1:20) 1: ", fnode(1:20)* nodes(nodeindex1) % totalmass
+    ! print*, "fnode: ", nodes(nodeindex1) % fnode
     !print*, nodes(nodeindex1) % c1
     !print*, "calc accel: "
     !print*,c1
-    nodes(nodeindex1) % c1 = nodes(nodeindex1)%c1 + c1 
-    nodes(nodeindex1) % c2 = nodes(nodeindex1) % c2 + c2 
-    nodes(nodeindex1) % c3 = nodes(nodeindex1) % c3 + c3 
-    !$omp end critical (node)
+    !nodes(nodeindex1) % c1 = nodes(nodeindex1)%c1 + c1 
+    !nodes(nodeindex1) % c2 = nodes(nodeindex1) % c2 + c2 
+    !nodes(nodeindex1) % c3 = nodes(nodeindex1) % c3 + c3 
+    !$ call omp_unset_lock(ipart_omp_lock(nodeindex1))
+    !!$omp end critical (node)
+
+
+    call get_dx_dr(cm2,cm1,dx,dr)
+
+    print*, "dx: ", dx
+    print*, "dr: ", dr 
+
+    fnode = 0.0
+
+    totmass = nodes(nodeindex1) % totalmass
+    !totmass = 1
+    quads = nodes(nodeindex1) % quads
+    !quads = 0.  
+    call compute_fnode(dx(1),dx(2),dx(3),dr,totmass,quads,fnode)
+    !$ call omp_set_lock(ipart_omp_lock(nodeindex1))
+    print*, "fnode(1:20) 2: ", fnode(1:20)*nodes(nodeindex2) % totalmass
+    nodes(nodeindex2) % fnode = nodes(nodeindex2) % fnode + fnode 
+    
+    !$ call omp_unset_lock(ipart_omp_lock(nodeindex1))
+
+    ! ! Calculate "force"
+    ! c0 = c0 * nodes(nodeindex1) % totalmass
+    ! c1 = c1 * nodes(nodeindex1) % totalmass 
+    ! c2 = c2 * nodes(nodeindex1) % totalmass
+    ! c3 = c3 * nodes(nodeindex1) % totalmass
+
+
+    ! ! force is equal and opposite 
+    ! c0new = -c0
+    ! c1new = -c1
+    ! c2new = -c2 
+    ! c3new = -c3  
+
+    ! ! divide by node mass to get 
+
+    ! c0 = c0new / (nodes(nodeindex2) % totalmass)
+    ! c1 = c1new / (nodes(nodeindex2) % totalmass)
+    ! c2 = c2new / (nodes(nodeindex2) % totalmass)
+    ! c3 = c3new / (nodes(nodeindex2) % totalmass)
 
     ! print poten
     !print*, "Poten is: ", fnode(20)
@@ -917,8 +994,8 @@ end subroutine interact_yokota
     !open(unit=77,file="wellseperated.txt")
     !write(77,*), "Node 1:", nodeindex1, "Node 2: ", nodeindex2
 
-    cm2 = nodes(nodeindex1) % centerofmass
-    cm1 = nodes(nodeindex2) % centerofmass
+    !cm2 = nodes(nodeindex1) % centerofmass
+    !cm1 = nodes(nodeindex2) % centerofmass
 
     !print*, "particles in node 1"
     !print*, nodes(nodeindex2) % data
@@ -926,7 +1003,7 @@ end subroutine interact_yokota
     !print*, nodes(nodeindex1) % data
 
 
-    call get_dx_dr(cm1,cm2,dx,dr)
+    !call get_dx_dr(cm1,cm2,dx,dr)
     !print*, "Cm of node1: ",cm1
     !print*, "Cm of node2: ",cm2
     !dx = cm1(1) - cm2(1)
@@ -938,16 +1015,16 @@ end subroutine interact_yokota
     !dr = 1./(sqrt(dot_product(cm1-cm2,cm1-cm2)))
     !print*, "Dr: ", dr 
 
-    fnode = 0.0
+    !fnode = 0.0
 
-    totmass = nodes(nodeindex1) % totalmass
+    !totmass = nodes(nodeindex1) % totalmass
     !print*, "Totalmass: ",totmass
     !totmass = 1.0
 
     ! calculate real accel here 
     !print*, "Real accel: "
-     r2 = dot_product(dx,dx)
-     r  = sqrt(r2)
+     !r2 = dot_product(dx,dx)
+     !r  = sqrt(r2)
      !print*, -totmass*(1/((r2)**1.5))*dx 
      !print*, "Real force: "
      !print*, -totmass*(1/((r2)**1.5))*dx * nodes(nodeindex2) %totalmass
@@ -956,29 +1033,32 @@ end subroutine interact_yokota
     !c1new = c1
     !c2new = c2 
     !c3new = c3 
-    c0 = 0.
-    c1 = 0.
-    c2 = 0.
-    c3 = 0.
-    quads = 0.
-    quads = nodes(nodeindex1) % quads 
+    !c0 = 0.
+    !c1 = 0.
+    !c2 = 0.
+    !c3 = 0.
+    !quads = 0.
+    !quads = nodes(nodeindex1) % quads 
 
 
     !call compute_fnode(dx(1),dx(2),dx(3),dr,totmass,quads,fnode)
-    call compute_coeff(dx(1),dx(2),dx(3),dr,totmass,quads,c0,c1,c2,c3)
+    !call compute_coeff(dx(1),dx(2),dx(3),dr,totmass,quads,c0,c1,c2,c3)
 
-    !$omp critical (node)
+    !!$omp critical (node)
+
     ! store coeff for walk phase 
-    nodes(nodeindex2) % fnode = nodes(nodeindex2) % fnode + fnode
-    !print*, "Stored acccel: "
-    nodes(nodeindex2) % c0 =  nodes(nodeindex2)%c0 + c0
-    !print*, nodes(nodeindex2) % c1
-    !print*, "calc accel: "
-    !print*,c1
-    nodes(nodeindex2) % c1 = nodes(nodeindex2)%c1 + c1
-    nodes(nodeindex2) % c2 = nodes(nodeindex2) % c2 + c2
-    nodes(nodeindex2) % c3 = nodes(nodeindex2) % c3 + c3
-    !$omp end critical (node)
+    ! !$ call omp_set_lock(ipart_omp_lock(nodeindex2))
+    ! !nodes(nodeindex2) % fnode = nodes(nodeindex2) % fnode + fnode
+    ! !print*, "Stored acccel: "
+    ! nodes(nodeindex2) % c0 =  nodes(nodeindex2)%c0 + c0
+    ! !print*, nodes(nodeindex2) % c1
+    ! !print*, "calc accel: "
+    ! !print*,c1
+    ! nodes(nodeindex2) % c1 = nodes(nodeindex2)%c1 + c1
+    ! nodes(nodeindex2) % c2 = nodes(nodeindex2) % c2 + c2
+    ! nodes(nodeindex2) % c3 = nodes(nodeindex2) % c3 + c3
+    ! !$ call omp_unset_lock(ipart_omp_lock(nodeindex2))
+    !!$omp end critical (node)
 
     ! print poten
     !print*, "Poten is: ", fnode(20)
@@ -1007,8 +1087,8 @@ end subroutine interact_yokota
   endif 
   ! UNLOCK THE NODES 
   !print*,"Nodes unlocked"
-  nodes(nodeindex1) % nodefree  = .true.
-  nodes(nodeindex2) % nodefree  = .true.
+  !nodes(nodeindex1) % nodefree  = .true.
+  !nodes(nodeindex2) % nodefree  = .true.
 
   ! THE NODE WITH THE LARGER RMAX IS SPLIT; up to 8 new MI are created and processed 
   else
@@ -1041,7 +1121,7 @@ end subroutine interact_yokota
         !print*, "regnode index: ", regnodeindex
         !print*, "Split node index: ",splitnodeindex
 
-        if (istacklocal(k) < 10) then 
+        if (istacklocal(k) < int(8/numthreads)) then 
          !if (all(threadworking)) then 
             istacklocal(k) = istacklocal(k) + 1
             stacklocal(istacklocal(k)) % nodeindex1 = regnodeindex
@@ -1061,8 +1141,8 @@ end subroutine interact_yokota
 
      ! UNLOCK THE NODES 
     !print*,"Nodes unlocked"
-    nodes(nodeindex1) % nodefree  = .true.
-    nodes(nodeindex2) % nodefree  = .true.
+    !nodes(nodeindex1) % nodefree  = .true.
+    !nodes(nodeindex2) % nodefree  = .true.
 
     ! LEAF-NODE NODE 
     elseif(splitnode % isLeaf .AND. .NOT. regnode % isLeaf) then
@@ -1116,8 +1196,8 @@ end subroutine interact_yokota
 
      !return
      ! UNLOCK THE NODES 
-     nodes(nodeindex1) % nodefree  = .true.
-     nodes(nodeindex2) % nodefree  = .true.
+     !nodes(nodeindex1) % nodefree  = .true.
+     !nodes(nodeindex2) % nodefree  = .true.
 
       ! Get children of a leaf node 
 
@@ -1168,8 +1248,8 @@ end subroutine interact_yokota
     !call get_accel_leafnode(x,a,m,np,particleindex,particleindex2)
 
     !return
-    nodes(nodeindex1) % nodefree  = .true.
-    nodes(nodeindex2) % nodefree  = .true.
+    !nodes(nodeindex1) % nodefree  = .true.
+    !nodes(nodeindex2) % nodefree  = .true.
 
     endif 
 
@@ -1179,7 +1259,14 @@ end subroutine interact_yokota
   !nodes(nodeindex2) % nodefree  = .true.  
 
   endif 
+  
   enddo  
+   print*, "Threadcounts: ", threadcounts
+   print*, "Idlecounts: ", idlecounts
+   !if (idlecounts /= 0 .and. threadcounts /= 0) then 
+    print*,"Fraction of time spent idle: "
+    print*, real(idlecounts/threadcounts)
+   !endif 
 
    
   !!$OMP end single 
@@ -1187,6 +1274,7 @@ end subroutine interact_yokota
 
 
   !$omp end parallel 
+  print*,"Wall time total: ", wallclock()
 
  end subroutine interact_stack
 
@@ -1393,6 +1481,19 @@ end subroutine interact_yokota
     nodes(nodeindex1) % c2 = nodes(nodeindex1) % c2 + c2 
     nodes(nodeindex1) % c3 = nodes(nodeindex1) % c3 + c3 
 
+
+    ! Find the "force" from the coefficents to exploit symmetry 
+    c0 = c0 * nodes(nodeindex1) % totalmass
+    c1 = c1 * nodes(nodeindex1) % totalmass
+    c2 = c2 * nodes(nodeindex1) % totalmass
+    c3 = c3 * nodes(nodeindex1) % totalmass 
+
+    ! "Force" is equal and opposite 
+    c0new = -c0
+    c1new = -c1
+    c2new = -c2 
+    c3new = -c3 
+
     ! print poten
     !print*, "Poten is: ", fnode(20)
     !call poten_at_bodypos(cm1,cm2,c0,c1,c2,c3,poten(20))
@@ -1403,8 +1504,8 @@ end subroutine interact_yokota
     !open(unit=77,file="wellseperated.txt")
     !write(77,*), "Node 1:", nodeindex1, "Node 2: ", nodeindex2
 
-    cm2 = nodes(nodeindex1) % centerofmass
-    cm1 = nodes(nodeindex2) % centerofmass
+    !cm2 = nodes(nodeindex1) % centerofmass
+    !cm1 = nodes(nodeindex2) % centerofmass
 
     !print*, "particles in node 1"
     !print*, nodes(nodeindex2) % data
@@ -1412,7 +1513,7 @@ end subroutine interact_yokota
     !print*, nodes(nodeindex1) % data
 
 
-    call get_dx_dr(cm1,cm2,dx,dr)
+    !call get_dx_dr(cm1,cm2,dx,dr)
     !print*, "Cm of node1: ",cm1
     !print*, "Cm of node2: ",cm2
     !dx = cm1(1) - cm2(1)
@@ -1424,9 +1525,9 @@ end subroutine interact_yokota
     !dr = 1./(sqrt(dot_product(cm1-cm2,cm1-cm2)))
     !print*, "Dr: ", dr 
 
-    fnode = 0.0
+    !fnode = 0.0
 
-    totmass = nodes(nodeindex1) % totalmass
+    !totmass = nodes(nodeindex1) % totalmass
     !print*, "Totalmass: ",totmass
     !totmass = 1.0
 
@@ -1438,23 +1539,30 @@ end subroutine interact_yokota
      !print*, "Real force: "
      !print*, -totmass*(1/((r2)**1.5))*dx * nodes(nodeindex2) %totalmass
 
-    c0new = c0
-    c1new = c1
-    c2new = c2 
-    c3new = c3 
-    c0 = 0.
-    c1 = 0.
-    c2 = 0.
-    c3 = 0.
-    quads = 0.
+    !c0new = c0
+    !c1new = c1
+    !c2new = c2 
+    !c3new = c3 
+    !c0 = 0.
+    !c1 = 0.
+    !c2 = 0.
+    !c3 = 0.
+    !quads = 0.
     !quads = nodes(nodeindex1) % quads 
     !call compute_fnode(dx(1),dx(2),dx(3),dr,totmass,quads,fnode)
-    call compute_coeff(dx(1),dx(2),dx(3),dr,totmass,quads,c0,c1,c2,c3)
+    !call compute_coeff(dx(1),dx(2),dx(3),dr,totmass,quads,c0,c1,c2,c3)
     !print*, "c1: ",c1* nodes(nodeindex2) % totalmass
 
     ! store coeff for walk phase 
-    nodes(nodeindex2) % fnode = nodes(nodeindex2) % fnode + fnode
+    !nodes(nodeindex2) % fnode = nodes(nodeindex2) % fnode + fnode
     !print*, "Stored acccel: "
+
+    ! Divide by mass to get "accel"
+    c0 = c0new / (nodes(nodeindex2) % totalmass)
+    c1 = c1new / (nodes(nodeindex2) % totalmass) 
+    c2 = c2new / (nodes(nodeindex2) % totalmass)
+    c3 = c3new / (nodes(nodeindex2) % totalmass)
+
     nodes(nodeindex2) % c0 =  nodes(nodeindex2)%c0 + c0
     !print*, nodes(nodeindex2) % c1
     !print*, "calc accel: "
@@ -1483,7 +1591,7 @@ end subroutine interact_yokota
 
     !print*, "Are values symmetric ? ", c1, c1new
 
-    if ( abs(c1(1) * nodes(nodeindex2) % totalmass) - abs(c1new(1) * totmass) > 1.e-18) stop
+    !if ( abs(c1(1) * nodes(nodeindex2) % totalmass) - abs(c1new(1) * totmass) > 1.e-18) stop
 
     !STOP
 
@@ -1683,10 +1791,10 @@ subroutine get_dx_dr(x1,x2,dx,dr)
   real :: h
 
 
-  h = 0.
+  !h = 0.
   h = 0.1
   dx = x1 - x2
-  dr = 1./(sqrt(dot_product(dx,dx) + h**2))
+  dr = 1./(sqrt(dot_product(dx,dx)))
 
  end subroutine get_dx_dr
 
@@ -1731,12 +1839,12 @@ subroutine global_to_local(stack,stacklocal,threadnumber,istacklocal,top)
   ! PUSH TO LOCAL 
   do i=1,8
     if (theinteractions(i) /= 0) then 
-      print*,"i is: ", i
+      !print*,"i is: ", i
       istacklocal(threadnumber) = istacklocal(threadnumber) + 1
       stacklocal(istacklocal(threadnumber)) % nodeindex1 = thenode
       stacklocal(istacklocal(threadnumber)) % nodeindex2 = theinteractions(i)
-      print*, "the node", thenode
-      print*, "the interactions ", theinteractions(i)
+      !print*, "the node", thenode
+      !print*, "the interactions ", theinteractions(i)
     endif 
   enddo 
 

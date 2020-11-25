@@ -32,6 +32,8 @@ subroutine compute_fnode(dx,dy,dz,dr,totmass,quads,fnode)
  ry  = dy*dr
  rz  = dz*dr
 
+ print*, "rx, ry, rz: ", rx, ry, rz 
+
  ! No quadrapole for the moment so == 1
  qxx = quads(1)
  qxy = quads(2)
@@ -74,22 +76,22 @@ subroutine compute_fnode(dx,dy,dz,dr,totmass,quads,fnode)
  fnode( 1) = fnode( 1) - dx*dr3m + fqx ! fx
  fnode( 2) = fnode( 2) - dy*dr3m + fqy ! fy
  fnode( 3) = fnode( 3) - dz*dr3m + fqz ! fz
- fnode( 4) = fnode( 4) + dr3m*(3.*rx*rx - 1.) + dfxdxq ! dfx/dx
- fnode( 5) = fnode( 5) + dr3m*(3.*rx*ry)      + dfxdyq ! dfx/dy = dfy/dx
- fnode( 6) = fnode( 6) + dr3m*(3.*rx*rz)      + dfxdzq ! dfx/dz = dfz/dx
- fnode( 7) = fnode( 7) + dr3m*(3.*ry*ry - 1.) + dfydyq ! dfy/dy
- fnode( 8) = fnode( 8) + dr3m*(3.*ry*rz)      + dfydzq ! dfy/dz = dfz/dy
- fnode( 9) = fnode( 9) + dr3m*(3.*rz*rz - 1.) + dfzdzq ! dfz/dz
- fnode(10) = fnode(10) - dr4m3*(5.*rx*rx*rx - 3.*rx) + d2fxxxq ! d2fxdxdx
- fnode(11) = fnode(11) - dr4m3*(5.*rx*rx*ry - ry)    + d2fxxyq ! d2fxdxdy
- fnode(12) = fnode(12) - dr4m3*(5.*rx*rx*rz - rz)    + d2fxxzq ! d2fxdxdz
- fnode(13) = fnode(13) - dr4m3*(5.*rx*ry*ry - rx)    + d2fxyyq ! d2fxdydy
- fnode(14) = fnode(14) - dr4m3*(5.*rx*ry*rz)         + d2fxyzq ! d2fxdydz
- fnode(15) = fnode(15) - dr4m3*(5.*rx*rz*rz - rx)    + d2fxzzq ! d2fxdzdz
- fnode(16) = fnode(16) - dr4m3*(5.*ry*ry*ry - 3.*ry) + d2fyyyq ! d2fydydy
- fnode(17) = fnode(17) - dr4m3*(5.*ry*ry*rz - rz)    + d2fyyzq ! d2fydydz
- fnode(18) = fnode(18) - dr4m3*(5.*ry*rz*rz - ry)    + d2fyzzq ! d2fydzdz
- fnode(19) = fnode(19) - dr4m3*(5.*rz*rz*rz - 3.*rz) + d2fzzzq ! d2fzdzdz
+ fnode( 4) = fnode( 4) + dr3m*(3.*rx*rx - 1.) !+ dfxdxq ! dfx/dx
+ fnode( 5) = fnode( 5) + dr3m*(3.*rx*ry)      !+ dfxdyq ! dfx/dy = dfy/dx
+ fnode( 6) = fnode( 6) + dr3m*(3.*rx*rz)      !+ dfxdzq ! dfx/dz = dfz/dx
+ fnode( 7) = fnode( 7) + dr3m*(3.*ry*ry - 1.) !+ dfydyq ! dfy/dy
+ fnode( 8) = fnode( 8) + dr3m*(3.*ry*rz)      ! + dfydzq ! dfy/dz = dfz/dy
+ fnode( 9) = fnode( 9) + dr3m*(3.*rz*rz - 1.) !+ dfzdzq ! dfz/dz
+ fnode(10) = fnode(10) - dr4m3*(5.*rx*rx*rx - 3.*rx) !+ d2fxxxq ! d2fxdxdx
+ fnode(11) = fnode(11) - dr4m3*(5.*rx*rx*ry - ry)    !+ d2fxxyq ! d2fxdxdy
+ fnode(12) = fnode(12) - dr4m3*(5.*rx*rx*rz - rz)    !+ d2fxxzq ! d2fxdxdz
+ fnode(13) = fnode(13) - dr4m3*(5.*rx*ry*ry - rx)    !+ d2fxyyq ! d2fxdydy
+ fnode(14) = fnode(14) - dr4m3*(5.*rx*ry*rz)         !+ d2fxyzq ! d2fxdydz
+ fnode(15) = fnode(15) - dr4m3*(5.*rx*rz*rz - rx)    !+ d2fxzzq ! d2fxdzdz
+ fnode(16) = fnode(16) - dr4m3*(5.*ry*ry*ry - 3.*ry) !+ d2fyyyq ! d2fydydy
+ fnode(17) = fnode(17) - dr4m3*(5.*ry*ry*rz - rz)    !+ d2fyyzq ! d2fydydz
+ fnode(18) = fnode(18) - dr4m3*(5.*ry*rz*rz - ry)    !+ d2fyzzq ! d2fydzdz
+ fnode(19) = fnode(19) - dr4m3*(5.*rz*rz*rz - 3.*rz) !+ d2fzzzq ! d2fzdzdz
  fnode(20) = fnode(20) - totmass*dr - 0.5*rijQij*dr3   ! potential
 
 
@@ -323,6 +325,8 @@ subroutine compute_coeff_new(dx,dy,dz,dr,totmass,quads,c0,c1,c2,c3)
 
 
 end subroutine compute_coeff_new
+
+
 
 real function delta(i,j)
  integer, intent(in) :: i, j

@@ -7,7 +7,7 @@ STEP = step_leapfrog.f90
 SETUP = plummer_dist.f90
 #SETUP = cold_collapse.f90
 TREE = contrivedtree.f90
-SRC= utils_timing.f90 read_dump.f90 errors.f90 deltat.f90 octreenode.f90 openingcriterion.f90 octree.f90 contrivedtree.f90 evaluate.f90 taylor.f90 potendirect.f90 interaction.f90   computemass.f90  ${STEP} output.f90 momentum.f90 sphere_dist.f90 ${SETUP} test_direct.f90 test_gravity.f90 main.f90  
+SRC= utils_timing.f90 utils_omp.f90 read_dump.f90 errors.f90 deltat.f90 octreenode.f90 openingcriterion.f90 octree.f90 contrivedtree.f90 evaluate.f90 taylor.f90 potendirect.f90 interaction.f90 computemass.f90  ${STEP} output.f90 momentum.f90 sphere_dist.f90 ${SETUP} test_direct.f90 test_gravity.f90 main.f90  
 OBJ=${SRC:.f90=.o}
 
 %.o: %.f90

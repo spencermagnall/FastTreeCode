@@ -54,14 +54,14 @@ module step_leapfrog
         !if (endnode /= 65) stop
         !stop
         call get_com(x,v,m,np,nodes,rootnode,sumMass,cm)
-        !call compute_quads(x,m,np,nodes,endnode)
+        call compute_quads(x,m,np,nodes,endnode)
         !call get_accel_test(x,atest,m,np)
         rootnode = 1
         rmax = 0.
         cm = 0.
         call find_rmax(x,nodes,rootNode,rmax)
         rootnode = 1
-        call interact(rootNode,rootNode,nodes,x,m,a,np)
+        call interact_stack(nodes,x,m,a,np)
         !stop
         !print*, "Accel:"
         !print*, a
@@ -79,15 +79,15 @@ module step_leapfrog
         do i=1, np
         print*, a(:,i)
         enddo 
-        print*, "Accel dir:"
-        do i=1,np
-        print*, atest(:,i)
-        enddo 
-        print*, "delta a: "
-        do i=1,np
-        print*, atest(:,i)-a(:,i)
-        enddo 
-        print*, "Net accel from tree: ", asum 
+        !print*, "Accel dir:"
+        !do i=1,np
+        !print*, atest(:,i)
+        !enddo 
+        !print*, "delta a: "
+        !do i=1,np
+        !print*, atest(:,i)-a(:,i)
+        !enddo 
+        !print*, "Net accel from tree: ", asum 
         !STOP
     endif 
 

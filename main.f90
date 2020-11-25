@@ -19,9 +19,10 @@ program nbody
       use errors
       use read_dump
       use timing
+      !use omputils
       implicit none 
       type(octreenode), allocatable :: nodes(:)
-      integer,parameter :: nopart = 10000 
+      integer,parameter :: nopart = 100000 
       real, allocatable :: x(:,:)
       real, allocatable :: v(:,:)
       real, allocatable :: a(:,:)
@@ -82,9 +83,9 @@ program nbody
 
       !STOP
       t = 0
-      dt = 1
+      dt = 0.1
       iter = 0 
-      tmax = 10
+      tmax = 100
       output_freq = 1 
       rootNode = 1
       sumMass = 0.0
@@ -127,13 +128,13 @@ program nbody
       node1 = 1
       node2 = 1
       
-      print*,"Wall time start: ", wallclock()
+      !print*,"Wall time start: ", wallclock()
       call cpu_time(starteval)
      !call interact(node1,node2,nodes,x,m,a,nopart)
-      !call interact_stack(nodes,x,m,a,nopart)
-      call interact_nolock(nodes,x,m,a,nopart)
+      call interact_stack(nodes,x,m,a,nopart)
+      !call interact_nolock(nodes,x,m,a,nopart)
       call cpu_time(stopeval)
-      print*,"Wall time total: ", wallclock()
+      !print*,"Wall time total: ", wallclock()
       print*,"Cpu time: ", stopeval-starteval
       !STOP
       read(*,*)
@@ -154,6 +155,7 @@ program nbody
      print*, wallclock()
       call evaluate_gravity_stack(nodes,x,a)
       !call evaluate_gravity_parallel(nodes,x,a)
+      !read(*,*)
       print*,"Walltime is:", wallclock()
       call cpu_time(stopeval)
       print*, "Times:",starteval,stopeval
@@ -164,6 +166,7 @@ program nbody
       do i=1, nopart
         print*, a(:,i)
       enddo
+      !read(*,*)
       print*, "Accel test: "
       do i=1, nopart
         print*, atest(:,i)
@@ -175,6 +178,10 @@ program nbody
       call get_rms(a,atest,nopart,rms)
       print*,"Root mean squared error: "
       print*,rms
+      asum = 0 
+      do i=1, nopart
+        asum = m(i)*a(:,i)
+      enddo 
       print*,"Net accel from tree: ", asum 
       !STOP
       !call get_accel(x,a,m,nopart)
@@ -219,7 +226,7 @@ program nbody
             !call print_tree(nodes,x,0,1)
             !if (deltap > abs(1.e-14)) stop
             deallocate(nodes) 
-            STOP            
+            !STOP            
 
       enddo
       close(66)

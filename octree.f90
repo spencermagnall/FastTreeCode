@@ -187,6 +187,7 @@ module octree
    bodychildindex = 0
 
    write(*,*) "CurrentNode is: ", currentnode
+   !stop 
     write(*,*) "endnode is: ", endnode
     write(*,*) "Currentparticle is: ", currentparticle
     write(*,*) "Part pos is: ", x(:,currentparticle)

@@ -11,7 +11,7 @@ module opening_criterion
 
   !bool =.true.
   !return 
-  theta = 0.8
+  theta = 1.
 
   cm1 = node1 % centerofmass
   cm2 = node2 % centerofmass
